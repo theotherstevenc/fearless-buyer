@@ -1,0 +1,212 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/geist';
+
+@theme {
+  --font-sans: 'Geist Variable', sans-serif;
+  --color-primary: #274963;
+  --color-primary-hover: #19384e;
+  --color-background: #f5f7fa;
+  --color-surface: #ffffff;
+  --color-foreground: #1d2d3a;
+  --color-muted: #586b79;
+  --color-border: #dce3e9;
+  --color-soft: #edf2f6;
+  --color-danger: #a22d35;
+  --color-danger-soft: #fff0f1;
+  --color-success: #255f47;
+}
+
+@layer base {
+  body {
+    @apply m-0 bg-background text-foreground font-sans antialiased;
+  }
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+  button {
+    @apply cursor-pointer;
+  }
+  button:disabled {
+    @apply opacity-45 cursor-not-allowed;
+  }
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+  input,
+  select {
+    @apply w-full rounded-lg border border-border bg-surface px-3 py-3 min-h-11;
+  }
+}
+
+@layer components {
+  .app-shell {
+    @apply mx-auto max-w-3xl px-4 py-5 sm:px-6 sm:py-8;
+  }
+  .app-header {
+    @apply flex items-center justify-between gap-3 rounded-2xl bg-primary text-white px-5 py-5;
+  }
+  .header-button {
+    @apply flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-white/15;
+  }
+  .sync-status {
+    @apply text-muted text-xs py-3;
+  }
+  .tabs {
+    @apply grid grid-cols-2 gap-1 rounded-xl bg-soft p-1 mb-6;
+  }
+  .tab-button {
+    @apply min-h-12 rounded-lg font-medium text-muted flex items-center justify-center gap-2;
+  }
+  .tab-button[data-state='active'] {
+    @apply bg-surface text-primary shadow-sm;
+  }
+  .tab-count {
+    @apply rounded-full bg-soft px-2 py-0.5 text-xs;
+  }
+  .tab-content {
+    @apply rounded-xl;
+  }
+  .tab-heading {
+    @apply flex items-center justify-between gap-3 mb-5;
+  }
+  .button-primary {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-white font-medium hover:bg-primary-hover;
+  }
+  .button-quiet {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-primary hover:bg-soft;
+  }
+  .icon-button {
+    @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-soft;
+  }
+  .search-field {
+    @apply flex items-center gap-3 rounded-xl border border-border bg-surface px-4 text-muted;
+  }
+  .search-field input {
+    @apply border-0 bg-transparent px-0;
+  }
+  .grocery-section {
+    @apply mt-6;
+  }
+  .section-heading {
+    @apply flex items-center justify-between gap-3 text-sm font-semibold text-muted mb-2;
+  }
+  .section-heading span {
+    @apply text-xs font-normal;
+  }
+  .rows {
+    @apply m-0 list-none rounded-xl border border-border bg-surface p-0 overflow-hidden;
+  }
+  .grocery-row {
+    @apply flex items-center gap-1 px-2 min-h-16 border-b border-border last:border-b-0;
+  }
+  .select-item,
+  .check-item {
+    @apply flex min-h-16 flex-1 min-w-0 items-center gap-3 px-2 text-left;
+  }
+  .select-item > span:last-child,
+  .item-name {
+    @apply break-words;
+  }
+  .add-circle {
+    @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-soft text-primary;
+  }
+  .check-box {
+    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-border;
+  }
+  .row-completed .check-box {
+    @apply border-success bg-success text-white;
+  }
+  .row-completed .item-name {
+    @apply line-through text-muted;
+  }
+  .row-completed {
+    @apply bg-soft;
+  }
+  .quantity-button {
+    @apply min-h-11 min-w-11 rounded-lg px-2 text-xs text-muted hover:bg-soft;
+  }
+  .quantity-button.has-quantity {
+    @apply text-sm font-semibold text-primary;
+  }
+  .empty-state {
+    @apply rounded-2xl border border-dashed border-border p-8 text-center mt-6;
+  }
+  .panel {
+    @apply rounded-2xl border border-border bg-surface p-6 shadow-sm;
+  }
+  .login-shell {
+    @apply mx-auto max-w-md px-5 pt-16 pb-8;
+  }
+  .brand-mark {
+    @apply inline-flex rounded-2xl bg-primary p-4 text-white mb-5;
+  }
+  .field {
+    @apply flex flex-col gap-2 text-sm font-medium;
+  }
+  .error {
+    @apply rounded-lg bg-danger-soft text-danger p-3 text-sm;
+  }
+  .notice {
+    @apply text-sm text-success;
+  }
+  .notice:not(:empty) {
+    @apply mb-4;
+  }
+  .modal-overlay {
+    @apply fixed inset-0 z-40 bg-foreground/40;
+  }
+  .modal-content {
+    @apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-surface p-5 shadow-xl sm:p-6;
+  }
+  .manage-rows {
+    @apply list-none p-0 m-0 rounded-lg border border-border;
+  }
+  .manage-row {
+    @apply flex items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1;
+  }
+  .drag-handle {
+    touch-action: none;
+  }
+  .dragging {
+    @apply relative z-10 shadow-lg;
+  }
+  .app-footer {
+    @apply text-center text-xs text-muted mt-10 pb-5;
+  }
+}
+
+.row-exiting {
+  animation: leave-catalog 220ms ease-in forwards;
+  pointer-events: none;
+}
+@keyframes leave-catalog {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+    max-height: 200px;
+  }
+  70% {
+    opacity: 0;
+    transform: translateX(12px);
+    max-height: 200px;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(12px);
+    max-height: 0;
+    min-height: 0;
+    border-width: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}

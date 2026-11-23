@@ -1,0 +1,30 @@
+import { initializeApp } from 'firebase/app'
+import { connectAuthEmulator, getAuth } from 'firebase/auth'
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+
+const useEmulators = import.meta.env.DEV && (import.meta.env.VITE_USE_FIREBASE_EMULATORS ?? 'true') === 'true'
+const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID ?? (useEmulators ? 'demo-fearless-buyer' : '')
+
+if (!projectId || (!useEmulators && projectId.startsWith('demo-'))) {
+  throw new Error('Configure a real Firebase project before building for production. See README.md.')
+}
+if (!useEmulators && !import.meta.env.VITE_FIREBASE_API_KEY) {
+  throw new Error('Missing Firebase configuration. See client/.env.example.')
+}
+
+const app = initializeApp({
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY ?? 'demo-key',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN ?? `${projectId}.firebaseapp.com`,
+  projectId,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID ?? 'demo-app',
+})
+
+export const auth = getAuth(app)
+export const db = getFirestore(app)
+export const householdId: string = import.meta.env.VITE_HOUSEHOLD_ID ?? 'home'
+
+if (useEmulators) {
+  if (!projectId.startsWith('demo-')) throw new Error('Local emulators require a demo- project ID.')
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFirestoreEmulator(db, '127.0.0.1', 8080)
+}

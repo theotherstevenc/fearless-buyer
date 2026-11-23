@@ -1,0 +1,118 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function member(householdId) {
+      return request.auth != null &&
+        request.auth.uid in get(/databases/$(database)/documents/households/$(householdId)).data.memberUids;
+    }
+    function validName(value) {
+      return value is string && value.size() > 0 && value.size() <= 100 &&
+        value.matches('.*\\S.*');
+    }
+    function catalogPath(householdId, itemId) {
+      return /databases/$(database)/documents/households/$(householdId)/catalog/$(itemId);
+    }
+    function sectionPath(householdId, sectionId) {
+      return /databases/$(database)/documents/households/$(householdId)/sections/$(sectionId);
+    }
+    function validSelection(householdId, items, itemId) {
+      return items[itemId] is map &&
+        items[itemId].keys().hasOnly(['quantity', 'completed']) &&
+        items[itemId].keys().hasAll(['quantity', 'completed']) &&
+        items[itemId].quantity is int && items[itemId].quantity > 0 &&
+        items[itemId].completed is bool &&
+        exists(catalogPath(householdId, itemId));
+    }
+    function validListCreate(householdId) {
+      let items = request.resource.data.items;
+      return items.size() == 0 ||
+        (items.size() == 1 && validSelection(householdId, items, items.keys()[0]));
+    }
+    function validListUpdate(householdId) {
+      let items = request.resource.data.items;
+      let changed = items.diff(resource.data.items).affectedKeys();
+      let itemId = request.resource.data.get('changedItemId', '');
+      return items.size() == 0 || changed.size() == 0 ||
+        (itemId is string && itemId.size() > 0 && changed.hasOnly([itemId]) &&
+          (!(itemId in items) || validSelection(householdId, items, itemId)));
+    }
+    function validSection(data) {
+      return data.keys().hasOnly(['name', 'sortOrder', 'itemCount', 'lastItemId', 'updatedAt']) &&
+        validName(data.name) && data.sortOrder is int && data.sortOrder >= 0 &&
+        data.itemCount is int && data.itemCount >= 0;
+    }
+    function validCountChange(householdId, sectionId) {
+      let data = request.resource.data;
+      let path = catalogPath(householdId, data.lastItemId);
+      return data.lastItemId is string && (
+        (data.itemCount == resource.data.itemCount + 1 &&
+          (!exists(path) || get(path).data.sectionId != sectionId) &&
+          getAfter(path).data.sectionId == sectionId) ||
+        (data.itemCount == resource.data.itemCount - 1 &&
+          get(path).data.sectionId == sectionId &&
+          getAfter(path).data.sectionId != sectionId)
+      );
+    }
+    function validCatalog(data, householdId) {
+      return data.keys().hasOnly(['name', 'sectionId', 'sortOrder', 'updatedAt']) &&
+        validName(data.name) && data.sortOrder is int && data.sortOrder >= 0 &&
+        data.sectionId is string && existsAfter(sectionPath(householdId, data.sectionId));
+    }
+    function countIncreased(householdId, sectionId, itemId) {
+      let path = sectionPath(householdId, sectionId);
+      return getAfter(path).data.itemCount == get(path).data.itemCount + 1 &&
+        getAfter(path).data.lastItemId == itemId;
+    }
+    function countDecreased(householdId, sectionId, itemId) {
+      let path = sectionPath(householdId, sectionId);
+      return getAfter(path).data.itemCount == get(path).data.itemCount - 1 &&
+        getAfter(path).data.lastItemId == itemId;
+    }
+    match /households/{householdId} {
+      allow read: if member(householdId);
+      allow write: if false;
+      match /sections/{sectionId} {
+        allow read: if member(householdId);
+        allow create: if member(householdId) &&
+          validSection(request.resource.data) && request.resource.data.itemCount == 0;
+        allow update: if member(householdId) && validSection(request.resource.data) &&
+          (request.resource.data.itemCount == resource.data.itemCount ||
+            validCountChange(householdId, sectionId));
+        allow delete: if member(householdId) && resource.data.itemCount == 0;
+      }
+      match /catalog/{itemId} {
+        allow read: if member(householdId);
+        allow create: if member(householdId) && validCatalog(request.resource.data, householdId) &&
+          countIncreased(householdId, request.resource.data.sectionId, itemId);
+        allow update: if member(householdId) && validCatalog(request.resource.data, householdId) &&
+          (request.resource.data.sectionId == resource.data.sectionId ||
+            (countIncreased(householdId, request.resource.data.sectionId, itemId) &&
+              countDecreased(householdId, resource.data.sectionId, itemId)));
+        allow delete: if false;
+      }
+      match /shoppingLists/active {
+        allow read: if member(householdId);
+        allow create: if member(householdId) &&
+          request.resource.data.keys().hasOnly(['items', 'changedItemId']) &&
+          request.resource.data.items is map && validListCreate(householdId);
+        allow update: if member(householdId) &&
+          request.resource.data.keys().hasOnly(['items', 'changedItemId']) &&
+          request.resource.data.items is map && validListUpdate(householdId);
+        allow delete: if false;
+      }
+      match /metadata/ordering {
+        allow read: if member(householdId);
+        allow create: if member(householdId) &&
+          request.resource.data.keys().hasOnly(['revision']) && request.resource.data.revision == 0;
+        allow update: if member(householdId) &&
+          request.resource.data.keys().hasOnly(['revision']) &&
+          request.resource.data.revision is int &&
+          request.resource.data.revision == resource.data.revision + 1;
+        allow delete: if false;
+      }
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
