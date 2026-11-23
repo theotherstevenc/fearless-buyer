@@ -1,0 +1,49 @@
+{
+  "name": "fearless-buyer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "packageManager": "npm@11.19.0",
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n firebase,client \"npm run emulators\" \"npm run dev -w client\"",
+    "emulators": "firebase emulators:start --only auth,firestore,hosting --project demo-fearless-buyer",
+    "dev:client": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm test -w client",
+    "test:rules": "firebase emulators:exec --only auth,firestore --project demo-fearless-buyer \"vitest run --config vitest.emulator.config.ts\"",
+    "test:integration": "firebase emulators:exec --only auth,firestore --project demo-fearless-buyer \"vitest run --config vitest.emulator.config.ts && playwright test\"",
+    "validate": "npm run lint && npm run format:check && npm run build && npm test && npm run test:integration",
+    "setup:local": "tsx scripts/setupLocal.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@firebase/rules-unit-testing": "^6.0.0",
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^24.13.3",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.39.0",
+    "eslint-config-prettier": "^10.1.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "firebase-admin": "^14.5.1",
+    "firebase-tools": "^15.37.0",
+    "globals": "^16.5.0",
+    "prettier": "^3.6.0",
+    "tsx": "^4.20.0",
+    "typescript-eslint": "^8.46.0",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.0"
+  }
+}
