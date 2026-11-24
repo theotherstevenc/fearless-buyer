@@ -17,7 +17,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import type { Firestore } from 'firebase/firestore'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { changeSelection } from '../client/src/lib/groceries'
 import { activeListSchema } from '../client/src/schemas/models'
@@ -25,15 +25,19 @@ import { activeListSchema } from '../client/src/schemas/models'
 let env: RulesTestEnvironment
 let one: Firestore
 let two: Firestore
+let services: typeof import('../client/src/services/groceries')
 const path = 'households/home'
+
+vi.mock('../client/src/lib/firebase', () => ({ db: one, householdId: 'home' }))
 
 beforeAll(async () => {
   env = await initializeTestEnvironment({
-    projectId: 'demo-fearless-buyer',
+    projectId: 'demo-fearless-buyer-tests',
     firestore: { rules: await readFile('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8080 },
   })
   one = env.authenticatedContext('buyer-one').firestore()
   two = env.authenticatedContext('buyer-two').firestore()
+  services = await import('../client/src/services/groceries')
 })
 
 beforeEach(async () => {
@@ -69,7 +73,7 @@ describe('household access', () => {
       await assertFails(setDoc(doc(db, `${path}/shoppingLists/active`), { items: {} }))
     }
   })
-  it('denies membership changes, catalog deletion, and unrecognized paths', async () => {
+  it('denies membership changes, uncoordinated catalog deletion, and unrecognized paths', async () => {
     await assertFails(updateDoc(doc(one, path), { memberUids: ['buyer-one', 'outsider'] }))
     await assertFails(deleteDoc(doc(one, `${path}/catalog/lemons`)))
     await assertFails(setDoc(doc(one, `${path}/other/doc`), { value: 1 }))
@@ -125,6 +129,69 @@ describe('active-list validation', () => {
 })
 
 describe('catalog and section integrity', () => {
+  it('deletes an unselected grocery through the actual service and preserves unrelated data', async () => {
+    await services.deleteCatalogItem('lemons', 0)
+
+    expect((await getDoc(doc(one, `${path}/catalog/lemons`))).exists()).toBe(false)
+    expect((await getDoc(doc(one, `${path}/catalog/apples`))).exists()).toBe(true)
+    expect((await getDoc(doc(one, `${path}/sections/produce`))).data()?.itemCount).toBe(1)
+    expect((await getDoc(doc(one, `${path}/metadata/ordering`))).data()?.revision).toBe(1)
+    expect((await getDoc(doc(one, `${path}/shoppingLists/active`))).data()?.items).toEqual({})
+  })
+  it("atomically removes a selected grocery and preserves the other member's list edit", async () => {
+    await services.updateSelection('lemons', { type: 'select' })
+    await services.updateSelection('apples', { type: 'select' })
+    const list = doc(two, `${path}/shoppingLists/active`)
+    await Promise.all([
+      services.deleteCatalogItem('lemons', 0),
+      runTransaction(two, async (transaction) => {
+        await transaction.get(list)
+        transaction.update(list, 'items.apples.completed', true, 'changedItemId', 'apples')
+      }),
+    ])
+
+    expect((await getDoc(doc(two, `${path}/catalog/lemons`))).exists()).toBe(false)
+    expect((await getDoc(list)).data()?.items).toEqual({ apples: { quantity: 1, completed: true } })
+    expect((await getDoc(doc(two, `${path}/sections/produce`))).data()?.itemCount).toBe(1)
+  })
+  it('serializes deletion against selection without leaving an orphaned list entry', async () => {
+    const results = await Promise.allSettled([
+      services.deleteCatalogItem('lemons', 0),
+      services.updateSelection('lemons', { type: 'select' }),
+    ])
+
+    expect(results[0].status).toBe('fulfilled')
+    expect((await getDoc(doc(one, `${path}/catalog/lemons`))).exists()).toBe(false)
+    expect((await getDoc(doc(one, `${path}/shoppingLists/active`))).data()?.items).toEqual({})
+    expect((await getDoc(doc(one, `${path}/sections/produce`))).data()?.itemCount).toBe(1)
+  })
+  it('rejects a stale deletion without altering the catalog or section count', async () => {
+    await updateDoc(doc(two, `${path}/metadata/ordering`), { revision: 1 })
+    await expect(services.deleteCatalogItem('lemons', 0)).rejects.toThrow('Catalog changed')
+
+    expect((await getDoc(doc(one, `${path}/catalog/lemons`))).exists()).toBe(true)
+    expect((await getDoc(doc(one, `${path}/sections/produce`))).data()?.itemCount).toBe(2)
+  })
+  it('denies deletion that leaves a selected item orphaned', async () => {
+    await services.updateSelection('lemons', { type: 'select' })
+    const batch = writeBatch(one)
+    batch.delete(doc(one, `${path}/catalog/lemons`))
+    batch.update(doc(one, `${path}/sections/produce`), { itemCount: 1, lastItemId: 'lemons' })
+
+    await assertFails(batch.commit())
+    expect((await getDoc(doc(one, `${path}/catalog/lemons`))).exists()).toBe(true)
+  })
+  it('denies a fully coordinated deletion by an unrelated account', async () => {
+    const db = env.authenticatedContext('outsider').firestore()
+    const batch = writeBatch(db)
+    batch.delete(doc(db, `${path}/catalog/lemons`))
+    batch.update(doc(db, `${path}/sections/produce`), { itemCount: 1, lastItemId: 'lemons' })
+    batch.update(doc(db, `${path}/shoppingLists/active`), {
+      'items.lemons': deleteField(),
+      changedItemId: 'lemons',
+    })
+    await assertFails(batch.commit())
+  })
   it('appends products only with an atomic section reference-count update', async () => {
     const batch = writeBatch(one)
     batch.set(doc(one, `${path}/catalog/pears`), { name: 'Pears', sectionId: 'produce', sortOrder: 2 })

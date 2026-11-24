@@ -50,7 +50,7 @@ service cloud.firestore {
           getAfter(path).data.sectionId == sectionId) ||
         (data.itemCount == resource.data.itemCount - 1 &&
           get(path).data.sectionId == sectionId &&
-          getAfter(path).data.sectionId != sectionId)
+          (!existsAfter(path) || getAfter(path).data.sectionId != sectionId))
       );
     }
     function validCatalog(data, householdId) {
@@ -88,7 +88,9 @@ service cloud.firestore {
           (request.resource.data.sectionId == resource.data.sectionId ||
             (countIncreased(householdId, request.resource.data.sectionId, itemId) &&
               countDecreased(householdId, resource.data.sectionId, itemId)));
-        allow delete: if false;
+        allow delete: if member(householdId) &&
+          countDecreased(householdId, resource.data.sectionId, itemId) &&
+          !(itemId in getAfter(/databases/$(database)/documents/households/$(householdId)/shoppingLists/active).data.items);
       }
       match /shoppingLists/active {
         allow read: if member(householdId);

@@ -42,29 +42,29 @@ At initial planning there was no grocery codebase. The inspected reference proje
   caches, charts, and data imports are not needed here.
 
 The new app workspace has been created and its dependencies installed locally.
-No reference repository files were changed. Three approved, signed local commits
+No reference repository files were changed. Approved, signed local commits
 exist on `main` (see Commit handoff). No remote, pushes, production Firebase
 resources, or deployments have been created.
 
 ## Implementation progress
 
-| Workstream                        | Status                                       | Remaining before completion                                                                                                                                                                      |
-| --------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Workspace and runtime             | Complete                                     | Node 24.19.0, npm 11.19.0 configuration, dependencies, and initial tooling verified                                                                                                              |
-| Firebase model and authentication | In progress: emulator rules tests pass       | Finish browser login/access verification and revalidate final implementation                                                                                                                     |
-| Shared data services              | In progress: emulator concurrency tests pass | Manual browser verification of actual services and failure paths remains                                                                                                                         |
-| Catalog selection                 | In progress: written                         | Verify full selection animation and failed-save recovery in a browser                                                                                                                            |
-| Grocery List                      | In progress: written                         | Verify shared check/remove/reset flow in a browser                                                                                                                                               |
-| Store management                  | In progress: written                         | Verify drag/keyboard ordering, section moves, and concurrent edits                                                                                                                               |
-| Integrated validation             | In progress                                  | Formatting applied; lint, 19 unit tests, build, and 14 emulator rules tests pass after formatting; Playwright removed; responsive/accessibility checks and dependency advisory assessment remain |
-| Setup documentation               | Pending                                      | Local setup guide and separately authorized production provisioning instructions                                                                                                                 |
+| Workstream                        | Status                                       | Remaining before completion                                                                                                                                                                        |
+| --------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace and runtime             | Complete                                     | Node 24.19.0, npm 11.19.0 configuration, dependencies, and initial tooling verified                                                                                                                |
+| Firebase model and authentication | In progress: emulator rules tests pass       | Finish browser login/access verification and revalidate final implementation                                                                                                                       |
+| Shared data services              | In progress: emulator concurrency tests pass | Manual browser verification of actual services and failure paths remains                                                                                                                           |
+| Catalog selection                 | In progress: written                         | Verify full selection animation and failed-save recovery in a browser                                                                                                                              |
+| Grocery List                      | In progress: written                         | Verify shared check/remove/reset flow in a browser                                                                                                                                                 |
+| Store management                  | In progress: written                         | Verify drag/keyboard ordering, section moves, and concurrent edits                                                                                                                                 |
+| Integrated validation             | In progress                                  | Lint, build, 25 client tests, and 20 emulator tests pass after management fixes; Playwright removed; browser retesting, responsive/accessibility checks, and dependency advisory assessment remain |
+| Setup documentation               | Pending                                      | Local setup guide and separately authorized production provisioning instructions                                                                                                                   |
 
 - Git initialized at the user's request with an empty `main` branch.
   `.gitignore` excludes dependencies, build output, TypeScript build metadata,
   local environment/secrets, emulator state, logs, and test artifacts while
   retaining `.env.example` and explicitly retaining `.nvmrc` despite a global
   ignore rule. `.gitattributes` normalizes source/config text line endings.
-  Five local commits exist on `main` (see Commit handoff).
+  Six local commits exist on `main` (see Commit handoff).
   No remote is configured and nothing has been pushed.
 - Scaffold, authentication components, catalog/list screens, store management,
   Firestore services/rules, and initial tests are written. All 14 current emulator
@@ -113,6 +113,46 @@ resources, or deployments have been created.
   browser automation returns, it needs a non-managed browser and user approval.
 - The two-person browser workflow is now verified manually, not by automation.
 - Do not assume a dev server or persistent local household is currently running.
+- Resumed 2026-11-23: restarted `npm run dev` as a detached local process and
+  verified HTTP readiness at http://127.0.0.1:5173 and
+  http://127.0.0.1:4000, plus Auth emulator readiness and the Firestore listener.
+  `npm run setup:local` created a fresh empty household and two local accounts;
+  generated passwords remain in terminal output only. At the user's stopping
+  point, Auth and Firestore were exported successfully to the ignored local
+  `.firebase/session-handoff-2026-11-23/` directory, then the dev server and
+  emulators were stopped. Automatic persistence is still not configured.
+  To resume this snapshot, start `npm run emulators -- --import=.firebase/session-handoff-2026-11-23`
+  and `npm run dev:client` in separate terminals under the pinned runtime/npm.
+  Export metadata was verified; restoration has not yet been tested. Browser
+  verification remains pending.
+
+### Management feedback and fixes (2026-11-23)
+
+- Manual feedback identified disconnected rounded borders, no grocery deletion,
+  an indistinct Add grocery action, and flicker during reordering. The user also
+  described the management page as unintuitive; broader UX refinement remains
+  pending rather than being treated as resolved by these targeted changes.
+- Rounded first/last management rows now match their container. Row actions wrap
+  on narrow screens instead of crowding the grocery name. Add grocery is a filled
+  button with a plus icon.
+- Reorders immediately retain the requested row order while saving, restore shared
+  order on failure, and accept subsequent shared changes. Brief saves no longer
+  dim every control; permanently unavailable moves remain visibly disabled.
+- Catalog deletion is now included in v1 at the user's request. Management offers
+  a Delete control and confirmation; the transaction deletes the catalog item,
+  removes its active-list field, decrements its section count, and advances the
+  ordering revision. Rules require coordinated count/list cleanup. Removal is
+  written even for an initially unselected item to handle concurrent selection.
+- Verified: lint, formatting, TypeScript/production build, 25 client tests, and 20 emulator
+  rules/service/concurrency tests pass. The large-chunk build warning remains.
+  Rules tests now use `demo-fearless-buyer-tests`, isolated from the live local
+  household. With `npm run dev` already running, the rules suite was invoked using
+  `npm exec -- vitest run --config vitest.emulator.config.ts` (under the pinned
+  runtime/npm), not a second emulator process. The live household was preserved.
+- The running dev server hot-reloaded these changes and the emulator confirmed
+  the rules update. Visual border/layout and drag-flicker retesting, plus the full
+  two-person workflow, remain manual checks. The user approved committing this
+  session's changes at the stopping point. No push or deployment is authorized.
 
 ### Rules and concurrency fixes made during pre-commit validation
 
@@ -144,9 +184,13 @@ resources, or deployments have been created.
     `client/src/**`, `firestore.rules`, `tests/`, `e2e/`,
     `playwright.config.ts`, and `scripts/`. Body records the known e2e failure.
   - `1b950c0 docs: add implementation plan and handoff` — `docs/plan.md`.
-  - `22f86c4 chore: remove Playwright browser tests`.
-  - `feat: simplify catalog and grocery list UI` — smoother selection exit,
+  - `84355fe chore: remove Playwright browser tests`.
+  - `e4be001 feat: simplify catalog and grocery list UI` — smoother selection exit,
     the UI simplifications below, the `setupLocal` TTY fix, and this plan.
+  - `fix: improve store management usability` — rounded borders, an explicit Add
+    grocery button, optimistic reorder presentation with failure recovery,
+    confirmed transactional catalog deletion, focused UI/emulator regressions,
+    and this session handoff. Authorized by the user at the stopping point.
 - Staged diffs were inspected before each commit: no real secrets (password hits
   are runtime-generated or fixtures); lockfile resolves only from
   `registry.npmjs.org`; no internal registry references.
@@ -268,7 +312,10 @@ resources, or deployments have been created.
   completion states. Preserve catalog and store order. Do not retain list history.
 - No automatic weekly reset.
 - Empty sections can be removed; populated sections require reassignment first.
-- Catalog deletion, multi-store support, prices, brands, substitutions, imports,
+- Catalog groceries can be deleted from management after confirmation. Delete
+  permanently removes the grocery from the catalog and current list for both
+  members, preserving other groceries and keeping the section count consistent.
+- Multi-store support, prices, brands, substitutions, imports,
   and shopping history are outside v1.
 
 ## Architecture
@@ -348,6 +395,8 @@ management changes do not silently lose ordering edits.
 - Rules validate allowed fields, name/section references, numeric ordering, and
   shopping-list entry quantity/completion shapes. Limit edits to supported
   operations; test nested-map updates and empty-list reset explicitly.
+- Catalog deletion requires an atomic section-count decrement and no remaining
+  active-list entry for the deleted item.
 - Default-deny all other paths. Use least privilege rather than copying public
   collection rules from Subaru.
 - Create a separate Firebase project only with explicit provisioning approval.

@@ -1,3 +1,6 @@
+import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
+
 import {
   DndContext,
   KeyboardSensor,
@@ -15,7 +18,6 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react'
-import type { ReactNode } from 'react'
 
 interface SortableRow {
   id: string
@@ -25,7 +27,7 @@ interface SortableRow {
 interface SortableRowsProps {
   rows: SortableRow[]
   isBusy: boolean
-  onReorder: (ids: string[]) => void
+  onReorder: (ids: string[]) => Promise<boolean>
 }
 interface DragRowProps {
   row: SortableRow
@@ -55,10 +57,10 @@ const DragRow = ({ row, isBusy, isFirst, isLast, onMove }: DragRowProps) => {
       >
         <GripVertical size={18} />
       </button>
-      <span className="flex-1 min-w-0 break-words">{row.label}</span>
-      <div className="flex shrink-0">
+      <span className="manage-row-label">{row.label}</span>
+      <div className="manage-row-actions">
         <button
-          className="icon-button"
+          className={`icon-button ${isFirst ? 'is-unavailable' : ''}`}
           disabled={isBusy || isFirst}
           onClick={() => onMove(-1)}
           aria-label={`Move ${row.label} up`}
@@ -66,7 +68,7 @@ const DragRow = ({ row, isBusy, isFirst, isLast, onMove }: DragRowProps) => {
           <ArrowUp size={16} />
         </button>
         <button
-          className="icon-button"
+          className={`icon-button ${isLast ? 'is-unavailable' : ''}`}
           disabled={isBusy || isLast}
           onClick={() => onMove(1)}
           aria-label={`Move ${row.label} down`}
@@ -80,13 +82,31 @@ const DragRow = ({ row, isBusy, isFirst, isLast, onMove }: DragRowProps) => {
 }
 
 export const SortableRows = ({ rows, isBusy, onReorder }: SortableRowsProps) => {
+  const [pendingOrder, setPendingOrder] = useState<{ sourceOrder: string; ids: string[] } | null>(null)
+  const [isReordering, setIsReordering] = useState(false)
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
-  const ids = rows.map((row) => row.id)
-  const handleMove = (oldIndex: number, newIndex: number) => {
-    if (!isBusy && newIndex >= 0 && newIndex < ids.length) onReorder(arrayMove(ids, oldIndex, newIndex))
+  const sourceIds = rows.map((row) => row.id)
+  const sourceOrder = JSON.stringify(sourceIds)
+  const ids = pendingOrder?.sourceOrder === sourceOrder ? pendingOrder.ids : sourceIds
+  useEffect(() => {
+    setPendingOrder((current) => (current && current.sourceOrder !== sourceOrder ? null : current))
+  }, [sourceOrder])
+  const orderedRows = [...rows].sort((one, two) => ids.indexOf(one.id) - ids.indexOf(two.id))
+  const handleMove = async (oldIndex: number, newIndex: number) => {
+    if (isBusy || isReordering || oldIndex < 0 || newIndex < 0 || newIndex >= ids.length) return
+    const nextIds = arrayMove(ids, oldIndex, newIndex)
+    setPendingOrder({ sourceOrder, ids: nextIds })
+    setIsReordering(true)
+    let isSaved = false
+    try {
+      isSaved = await onReorder(nextIds)
+    } finally {
+      if (!isSaved) setPendingOrder(null)
+      setIsReordering(false)
+    }
   }
   return (
     <DndContext
@@ -94,19 +114,21 @@ export const SortableRows = ({ rows, isBusy, onReorder }: SortableRowsProps) => 
       collisionDetection={closestCenter}
       onDragEnd={({ active, over }) => {
         if (over && active.id !== over.id)
-          handleMove(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)))
+          void handleMove(ids.indexOf(String(active.id)), ids.indexOf(String(over.id)))
       }}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
         <ul className="manage-rows">
-          {rows.map((row, index) => (
+          {orderedRows.map((row, index) => (
             <DragRow
               key={row.id}
               row={row}
-              isBusy={isBusy}
+              isBusy={isBusy || isReordering}
               isFirst={index === 0}
               isLast={index === rows.length - 1}
-              onMove={(direction) => handleMove(index, index + direction)}
+              onMove={(direction) => {
+                void handleMove(index, index + direction)
+              }}
             />
           ))}
         </ul>

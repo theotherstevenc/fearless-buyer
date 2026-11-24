@@ -32,7 +32,7 @@
     @apply opacity-45 cursor-not-allowed;
   }
   /* Brief saves keep controls readable instead of flashing the whole page. */
-  .is-saving button:disabled {
+  .is-saving button:disabled:not(.is-unavailable) {
     @apply opacity-100 cursor-progress;
   }
   :focus-visible {
@@ -81,6 +81,9 @@
   }
   .button-quiet {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-primary hover:bg-soft;
+  }
+  .button-danger {
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-danger px-4 py-2 text-white font-medium hover:brightness-90;
   }
   .icon-button {
     @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-soft;
@@ -163,10 +166,16 @@
     @apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-surface p-5 shadow-xl sm:p-6;
   }
   .manage-rows {
-    @apply list-none p-0 m-0 rounded-lg border border-border;
+    @apply list-none p-0 m-0 rounded-lg border border-border bg-surface;
   }
   .manage-row {
-    @apply flex items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1;
+    @apply flex flex-wrap items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1 first:rounded-t-[inherit] last:rounded-b-[inherit];
+  }
+  .manage-row-label {
+    @apply flex-1 min-w-24 break-words;
+  }
+  .manage-row-actions {
+    @apply flex shrink-0 ml-auto;
   }
   .drag-handle {
     touch-action: none;

@@ -1,10 +1,11 @@
-import { Pencil, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 
+import { Pencil, Plus, Trash2 } from 'lucide-react'
+
 import { getErrorMessage, groupGroceries } from '../lib/groceries'
 import type { CatalogItem, HouseholdData, Section } from '../schemas/models'
-import { removeEmptySection, reorder, saveSection } from '../services/groceries'
+import { deleteCatalogItem, removeEmptySection, reorder, saveSection } from '../services/groceries'
 import { ItemEditor } from './ItemEditor'
 import { Modal } from './Modal'
 import { SortableRows } from './SortableRows'
@@ -19,6 +20,7 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
   const [sectionName, setSectionName] = useState('')
   const [editingSection, setEditingSection] = useState<Section | undefined>()
   const [editingItem, setEditingItem] = useState<CatalogItem | undefined>()
+  const [deletingItem, setDeletingItem] = useState<CatalogItem | undefined>()
   const [isAddingItem, setIsAddingItem] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState('')
@@ -54,8 +56,8 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
         if (!isBusy) onClose()
       }}
     >
-      <div className="space-y-5">
-        {error && (
+      <div className={`space-y-5 ${isBusy ? 'is-saving' : ''}`} aria-busy={isBusy}>
+        {error && !deletingItem && (
           <p role="alert" className="error">
             {error}
           </p>
@@ -111,7 +113,7 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
                       <Pencil size={16} />
                     </button>
                     <button
-                      className="icon-button"
+                      className={`icon-button ${section.itemCount > 0 ? 'is-unavailable' : ''}`}
                       disabled={disabled || section.itemCount > 0}
                       title={
                         section.itemCount ? 'Move groceries out before removing this section' : undefined
@@ -126,12 +128,11 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
                   </>
                 ),
               }))}
-              onReorder={(ids) => {
-                void operate(() => reorder('sections', ids, data.revision))
-              }}
+              onReorder={(ids) => operate(() => reorder('sections', ids, data.revision))}
             />
-            <button className="button-quiet" disabled={disabled} onClick={() => setIsAddingItem(true)}>
-              Add grocery to catalog
+            <button className="button-primary" disabled={disabled} onClick={() => setIsAddingItem(true)}>
+              <Plus size={18} aria-hidden="true" />
+              Add grocery
             </button>
             {groups.map(({ section, items }) => (
               <section key={section.id}>
@@ -142,19 +143,30 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
                     id: item.id,
                     label: item.name,
                     actions: (
-                      <button
-                        className="icon-button"
-                        disabled={disabled}
-                        aria-label={`Edit ${item.name}`}
-                        onClick={() => setEditingItem(item)}
-                      >
-                        <Pencil size={16} />
-                      </button>
+                      <>
+                        <button
+                          className="icon-button"
+                          disabled={disabled}
+                          aria-label={`Edit ${item.name}`}
+                          onClick={() => setEditingItem(item)}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          className="icon-button text-danger"
+                          disabled={disabled}
+                          aria-label={`Delete ${item.name} from catalog`}
+                          onClick={() => {
+                            setError('')
+                            setDeletingItem(item)
+                          }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </>
                     ),
                   }))}
-                  onReorder={(ids) => {
-                    void operate(() => reorder('catalog', ids, data.revision))
-                  }}
+                  onReorder={(ids) => operate(() => reorder('catalog', ids, data.revision))}
                 />
                 {items.length === 0 && (
                   <p className="text-muted text-sm">No groceries in this section yet.</p>
@@ -174,6 +186,36 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
           }}
         />
       )}
+      <Modal
+        isOpen={!!deletingItem}
+        title={`Delete ${deletingItem?.name ?? 'grocery'}?`}
+        description="This permanently removes the grocery from your catalog and the current list for both of you."
+        onClose={() => {
+          if (!isBusy) setDeletingItem(undefined)
+        }}
+      >
+        {error && (
+          <p role="alert" className="error mb-3">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button className="button-quiet" disabled={disabled} onClick={() => setDeletingItem(undefined)}>
+            Keep grocery
+          </button>
+          <button
+            className="button-danger"
+            disabled={disabled}
+            onClick={async () => {
+              if (deletingItem && (await operate(() => deleteCatalogItem(deletingItem.id, data.revision)))) {
+                setDeletingItem(undefined)
+              }
+            }}
+          >
+            Delete grocery
+          </button>
+        </div>
+      </Modal>
     </Modal>
   )
 }

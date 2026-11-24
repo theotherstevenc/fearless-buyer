@@ -154,3 +154,28 @@ export const removeEmptySection = async (section: Section, expectedRevision: num
     transaction.set(orderRef, { revision: revision + 1 })
   })
 }
+
+export const deleteCatalogItem = async (itemId: string, expectedRevision: number): Promise<void> => {
+  await runTransaction(db, async (transaction) => {
+    const order = await transaction.get(orderRef)
+    const current = await transaction.get(doc(catalogRef, itemId))
+    const list = await transaction.get(listRef)
+    const revision = order.exists() ? readRevision(order.data()) : 0
+    if (revision !== expectedRevision)
+      throw new Error('Catalog changed. Please try again with the latest items.')
+    if (!current.exists()) throw new Error('This grocery was already deleted.')
+    if (!list.exists()) throw new Error('Household setup is incomplete. Create the active list first.')
+    const item = catalogItemSchema.parse(current.data())
+    const section = await transaction.get(doc(sectionsRef, item.sectionId))
+    if (!section.exists()) throw new Error("This grocery's store section no longer exists.")
+    const storedSection = sectionSchema.parse(section.data())
+    if (storedSection.itemCount === 0)
+      throw new Error('The store section count is inconsistent. Please retry.')
+    activeListSchema.parse(list.data())
+    transaction.delete(current.ref)
+    transaction.update(section.ref, { itemCount: storedSection.itemCount - 1, lastItemId: itemId })
+    // Include removal even when unselected, so a concurrent selection cannot leave an orphan.
+    transaction.update(listRef, new FieldPath('items', itemId), deleteField(), 'changedItemId', itemId)
+    transaction.set(orderRef, { revision: revision + 1 })
+  })
+}
