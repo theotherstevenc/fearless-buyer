@@ -50,12 +50,11 @@ resources, or deployments have been created.
 
 ### Jump in next time (updated 2026-11-24)
 
-**Starting state:** local app/emulators are stopped. Current signed commits are
-`7eceb76 chore: version household catalog seed` and
-`56da4c6 feat: refine shopping UI and add system dark mode`. The safe seed has
+**Starting state:** the user considers the app v1-ready. Latest signed commits
+are the 2026-11-24 theme/UI commit (find it with `git log -1`) and
+`77d7490 chore: persist local emulator data across restarts`. The safe seed has
 seven sections and 69 items. `docs/list.md` is untracked and must remain
-untouched unless requested. The 2026-11-24 persistence change and this handoff
-update are uncommitted; any commit or push needs separate approval.
+untouched unless requested. Any further commit or push needs separate approval.
 
 **Local data now persists automatically.** `npm run dev` and `npm run emulators`
 import from and export on exit to `.firebase/emulator-data/` (Git-ignored). It
@@ -91,12 +90,30 @@ deleted) that data survives restarts after `npm run emulators` + SIGINT,
 `npm run dev` + Ctrl-C, and `npm run dev` when the client exits first.
 `test:rules` still uses fresh, non-persisted emulators.
 
+UI and theme changes (2026-11-24, from the user's manual review):
+
+- Trader Joe's–inspired warm grocer palette for light and dark modes (red
+  primary/header, parchment background, cream surfaces, brown text) plus
+  matching `theme-color` meta tags. All text pairs were checked against WCAG AA
+  4.5:1 and control borders against 3:1. Light-mode `control-border` is now
+  darker than `border`. Danger is maroon/salmon and close in hue to primary; the
+  user accepted this for now.
+- Catalog/Grocery List tab buttons gained horizontal padding.
+- Management rows: below a 21rem list width (container query on `.manage-rows`),
+  actions move to a full-width soft-background band; hover there is
+  `bg-surface/50`.
+- Modals use a 2px border. A fixed header with a separately scrolling body was
+  tried and rejected because it used too much screen space.
+- The store manager modal no longer shows a description; reordering guidance
+  remains in the controls' accessible labels.
+
 Next priorities:
 
 1. Done: restored household verified and automatic local persistence configured.
-2. Finish the manual two-person workflow, iPhone 13 mini/responsive layout,
-   system dark-mode switching, long-press/keyboard reordering, offline errors,
-   and VoiceOver checks. Browser automation remains removed by user request.
+2. Still open before calling v1 verified: manual two-person workflow, offline
+   errors, long-press/keyboard reordering, system dark-mode switching, and
+   VoiceOver checks. The user reviewed the layout on small screens and requested
+   the UI changes above. Browser automation remains removed by user request.
 3. Assess the existing bundle-size warning and outstanding dependency advisory
    status; do not treat the scoped font installation's audit as a full assessment.
 4. Write the setup README. Add explicit seed import/migration tooling when
