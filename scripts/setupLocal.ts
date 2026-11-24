@@ -45,7 +45,9 @@ try {
     console.log(
       'Passwords are generated and never saved to source files. Keep this terminal output for local login.',
     )
-    await prompt.question('Press Enter when you have noted the local credentials. ')
+    if (process.stdin.isTTY) {
+      await prompt.question('Press Enter when you have noted the local credentials. ')
+    }
   }
 } catch (error) {
   console.error('Local setup failed. Start npm run dev (or npm run emulators) first.', error)

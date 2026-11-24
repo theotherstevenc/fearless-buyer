@@ -53,8 +53,8 @@ resources, or deployments have been created.
 | Workspace and runtime             | Complete                                     | Node 24.19.0, npm 11.19.0 configuration, dependencies, and initial tooling verified                                                                                                              |
 | Firebase model and authentication | In progress: emulator rules tests pass       | Finish browser login/access verification and revalidate final implementation                                                                                                                     |
 | Shared data services              | In progress: emulator concurrency tests pass | Manual browser verification of actual services and failure paths remains                                                                                                                         |
-| Catalog selection                 | In progress: written                         | Verify full selection animation, Undo, and failed-save recovery in a browser                                                                                                                     |
-| Grocery List                      | In progress: written                         | Verify shared quantity/check/remove/reset flow in a browser                                                                                                                                      |
+| Catalog selection                 | In progress: written                         | Verify full selection animation and failed-save recovery in a browser                                                                                                                            |
+| Grocery List                      | In progress: written                         | Verify shared check/remove/reset flow in a browser                                                                                                                                               |
 | Store management                  | In progress: written                         | Verify drag/keyboard ordering, section moves, and concurrent edits                                                                                                                               |
 | Integrated validation             | In progress                                  | Formatting applied; lint, 19 unit tests, build, and 14 emulator rules tests pass after formatting; Playwright removed; responsive/accessibility checks and dependency advisory assessment remain |
 | Setup documentation               | Pending                                      | Local setup guide and separately authorized production provisioning instructions                                                                                                                 |
@@ -64,7 +64,7 @@ resources, or deployments have been created.
   local environment/secrets, emulator state, logs, and test artifacts while
   retaining `.env.example` and explicitly retaining `.nvmrc` despite a global
   ignore rule. `.gitattributes` normalizes source/config text line endings.
-  Three local commits exist on `main`; the working tree was clean afterward.
+  Five local commits exist on `main` (see Commit handoff).
   No remote is configured and nothing has been pushed.
 - Scaffold, authentication components, catalog/list screens, store management,
   Firestore services/rules, and initial tests are written. All 14 current emulator
@@ -144,6 +144,9 @@ resources, or deployments have been created.
     `client/src/**`, `firestore.rules`, `tests/`, `e2e/`,
     `playwright.config.ts`, and `scripts/`. Body records the known e2e failure.
   - `1b950c0 docs: add implementation plan and handoff` — `docs/plan.md`.
+  - `22f86c4 chore: remove Playwright browser tests`.
+  - `feat: simplify catalog and grocery list UI` — smoother selection exit,
+    the UI simplifications below, the `setupLocal` TTY fix, and this plan.
 - Staged diffs were inspected before each commit: no real secrets (password hits
   are runtime-generated or fixtures); lockfile resolves only from
   `registry.npmjs.org`; no internal registry references.
@@ -159,8 +162,41 @@ resources, or deployments have been created.
 1. Done: build and `npm run test:rules` (14/14) pass after formatting.
 2. Done: browser automation removed (see Browser testing). Next, manually
    verify the two-person workflow on two signed-in sessions against the local
-   emulators: selection animation and Undo, quantity/check/remove/reset sync,
+   emulators: selection animation, check/remove/reset sync,
    failure states, responsive layout, and accessible ordering.
+   Session of 2026-11-23: `npm run dev` was started (app at
+   http://127.0.0.1:5173, Emulator UI at http://127.0.0.1:4000) and
+   `npm run setup:local` created the empty household and two local accounts
+   (`buyer1@example.test`, `buyer2@example.test`; passwords printed by the
+   script only). Emulator data is not persisted; stopping `npm run dev` loses
+   it (the server was stopped at the end of the session). Fixed:
+   `scripts/setupLocal.ts` only waits for Enter in an
+   interactive terminal, so non-interactive runs no longer report a false
+   "Local setup failed" after successful setup.
+   User feedback: selection exit was too fast and the page redraw jumpy.
+   Fixed: 450 ms two-phase exit (slide/fade, then grid-row
+   height collapse), several rows can exit at once and only the write blocks
+   other operations, controls no longer dim during brief saves, and the status
+   line reserves its height. Reduced motion skips the animation and wait.
+   Then set to 450 ms at the user's request.
+   UI tweaks (user request): removed the "Synced with your
+   household" and "Saving..." status text (the status line now shows only
+   Offline/Connecting warnings and takes no space otherwise), removed the
+   Catalog "Choose your groceries" heading and subtitle, moved Add item to a
+   44x44 "+" icon button beside the search field,
+   and removed both Undo and the "... added to Grocery List." notice; the exit
+   animation is the only selection feedback. Also dropped the "Item returned to
+   catalog." notice, aligned the search focus ring with the rounded field, and
+   removed section headings from Catalog and Grocery List (one flat list each,
+   still in store order). Removed catalog search for now (the filter remains in
+   `groupGroceries` so it can return); Add item moved to a "+" header button,
+   and focus moves to the next catalog row after a selection. Grocery List
+   dropped its heading; progress and New list moved to a footer below the items.
+   Quantity controls were removed from the UI and deferred to v2 after trying a
+   modal, an inline stepper, and a tap-to-open chip; all felt clunky.
+   Remaining: finish the two-person check (sync between two sessions, reset,
+   management ordering, phone layout, offline) after `npm run dev` and
+   `npm run setup:local`.
 3. Assess the 14 moderate dependency advisories and the large-chunk build warning.
 4. Document local startup, account setup, and emulator persistence; then propose
    the approved `docs: document local setup and development` commit.
@@ -179,19 +215,21 @@ resources, or deployments have been created.
   Labels such as Produce or Frozen are sufficient; exact aisle numbers are optional
   text in the section name, not required identity or sorting data.
 - Within each section, use custom item order, not alphabetical order. Both Catalog
-  and Grocery List share the same section/item order; search preserves this order.
+  and Grocery List share the same section/item order; search (currently removed) preserved this order.
 - New sections append to the route; new items append within their chosen section.
   Users refine both orders with management-mode dragging or move controls.
-- Hide section headings with no visible items in ordinary tab views. Keep all
-  sections visible in management so empty sections remain editable.
+- Catalog and Grocery List show no section headings: each is one flat list
+  ordered by section, then item. Management shows all sections (including
+  empty ones) with headings so they remain editable.
 - Store layout and groceries can be entered incrementally and revised later without
   changing permanent section/item IDs. No retailer product feed or aisle lookup is
   needed in v1.
 
 ### Catalog tab
 
-- Show reusable items that are not currently selected, grouped in store order.
-- Support search, Add Item, and an explicit Edit action.
+- Show reusable items that are not currently selected, in store order (no section headings).
+- Support Add Item (a "+" button in the app header) and an explicit Edit
+  action. Search is removed for now and may return.
 - Selecting an item adds it with quantity 1 and incomplete status, then animates
   it out of the catalog. Stay on this tab so successive selections are easy.
 - Update the Grocery List tab count and announce the addition accessibly.
@@ -203,16 +241,19 @@ resources, or deployments have been created.
 
 - Show selected items in custom section and item order.
 - Keep one row per catalog item; repeated rows are explicitly out of scope.
-- Default quantity is 1 with no visible x1 badge. Show x2, x3, etc. for multiples.
-- Use a separate quantity control with positive whole-number values.
+- No quantity UI in v1 (deferred to v2). The data model still stores
+  `quantity: 1` per entry so a v2 control needs no schema or rules change.
+  Tried and rejected: a modal, an always-visible stepper, a tap-to-open chip.
 - Checking an item dims it and shows a checked state without changing position.
   Unchecking restores its incomplete appearance.
 - Completion is distinct from removal. A separate Remove action returns the item
   to its ordered position in the catalog.
-- Do not offer catalog-detail editing on this tab. Only quantity, completion,
-  and removal controls belong here; quantity and completion apply to this trip.
+- Do not offer catalog-detail editing on this tab. Only completion and removal
+  controls belong here; completion applies to this trip.
 - Edit names, sections, and order through Catalog or its management view only.
 - Intentional catalog reordering may change list order; checking never does.
+- No tab heading: the list starts under the tabs, like Catalog. A footer below
+  the items shows "N of M in cart" and the New list action.
 
 ### Management and reset
 
@@ -256,7 +297,7 @@ resources, or deployments have been created.
 - `client/src/services/`: catalog, section-order, and shopping-list operations.
 - `client/src/hooks/`: subscribed household data and user-visible operation state.
 - `client/src/components/`: CatalogTab, GroceryListTab, grocery rows, item editor,
-  quantity editor, StoreManager, login, and confirmation dialogs.
+  StoreManager, login, and confirmation dialogs.
 - `client/src/lib/`: tested search, ordering, and catalog/list projection helpers.
 - Root `firebase.json`, `firestore.rules`, and emulator rule tests.
 
@@ -320,9 +361,12 @@ management changes do not silently lose ordering edits.
 - Local exit animation is presentation state, not the authority for list changes.
   Disable duplicate activation during an operation. Reconcile live updates without
   replaying exit animations or generating duplicate rows.
-- Clearly indicate saving versus saved. On rejection/failure, restore a usable
+- Show offline/connecting states; per user request there is no visible
+  saving/saved text (selection feedback is the exit animation only).
+  On rejection/failure, restore a usable
   catalog row, preserve user input where relevant, and show a specific retry path.
-- Provide Undo for selection by returning the item to the catalog.
+- No Undo for selection (removed at the user's request); Remove on Grocery
+  List returns an item to the catalog.
 - Respect reduced motion; maintain sensible keyboard focus after a row exits.
 - Offline editing and persistent offline storage are outside v1. Do not enable
   persistent Firestore cache as an accidental offline promise. Transactions
@@ -335,13 +379,13 @@ management changes do not silently lose ordering edits.
 
 Use Subaru's clean token-based styling with a simpler mobile layout. Provide two
 primary tabs, Catalog and Grocery List, and a secondary management entry point.
-Use large touch targets, clear section headings, explicit catalog edit controls
+Use large touch targets, section headings only in management, explicit catalog edit controls
 and Grocery List removal controls, visible focus, semantic tabs/checkboxes, and
 non-color completion indicators.
 
 Selecting a catalog row uses a short fade/slide and height-collapse transition.
 Keep the catalog item editor separate from the selection target and Grocery List
-quantity controls separate from the check target. Do not show a catalog editor
+removal separate from the check target. Do not show a catalog editor
 or catalog-detail edit action on Grocery List.
 Screen-reader announcements and focus behavior must work without animation.
 Validate on a phone viewport and desktop; refine branding after the core flow works.
@@ -351,8 +395,9 @@ Validate on a phone viewport and desktop; refine branding after the core flow wo
 1. Scaffold the new workspace, tooling, theme, tab shell, and test infrastructure.
 2. Define schemas, Firestore model, Firebase setup, auth gate, and access rules.
 3. Implement real-time data hooks and transactional shopping/catalog services.
-4. Build catalog search, add/edit forms, and animated selection with Undo.
-5. Build ordered Grocery List, quantity editing, completion, removal, and reset.
+4. Build catalog search, add/edit forms, and animated selection.
+5. Build ordered Grocery List, completion, removal, and reset (quantity UI
+   deferred to v2).
 6. Build section/item management, drag ordering, and accessible move controls.
 7. Validate integrated behavior, access rules, concurrency, and responsive UX.
 8. Document local setup and prepare the separate production provisioning steps.

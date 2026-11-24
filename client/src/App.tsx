@@ -1,6 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { signOut } from 'firebase/auth'
-import { LogOut, Settings2, ShoppingBasket } from 'lucide-react'
+import { LogOut, Plus, Settings2, ShoppingBasket } from 'lucide-react'
 import { useState } from 'react'
 
 import { CatalogTab } from './components/CatalogTab'
@@ -16,7 +16,11 @@ import { getErrorMessage } from './lib/groceries'
 import type { CatalogItem } from './schemas/models'
 import { resetList, updateSelection } from './services/groceries'
 
-const EXIT_DURATION_MS = 220
+// Keep in sync with the .row-exiting animation in index.css.
+const CATALOG_EXIT_DURATION_MS = 450
+
+const getExitDurationMs = (): number =>
+  window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : CATALOG_EXIT_DURATION_MS
 
 interface HouseholdAppProps {
   userId: string
@@ -29,8 +33,7 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [undoId, setUndoId] = useState<string | null>(null)
-  const [exitingItem, setExitingItem] = useState<CatalogItem | null>(null)
+  const [exitingItems, setExitingItems] = useState<CatalogItem[]>([])
   const [editingItem, setEditingItem] = useState<CatalogItem | undefined>()
   const [isAddingItem, setIsAddingItem] = useState(false)
   const [isManaging, setIsManaging] = useState(false)
@@ -57,16 +60,15 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
     }
   }
   const handleSelect = async (item: CatalogItem): Promise<boolean> => {
-    setExitingItem(item)
+    setExitingItems((items) => [...items, item])
     const start = performance.now()
-    const success = await operate(async () => {
-      await updateSelection(item.id, { type: 'select' })
-      await new Promise((resolve) =>
-        setTimeout(resolve, Math.max(0, EXIT_DURATION_MS - (performance.now() - start))),
-      )
-    }, `${item.name} added to Grocery List.`)
-    setExitingItem(null)
-    if (success) setUndoId(item.id)
+    // Only the write blocks other operations; the exit animation finishes afterward.
+    const success = await operate(() => updateSelection(item.id, { type: 'select' }))
+    if (success) {
+      const remainingMs = getExitDurationMs() - (performance.now() - start)
+      if (remainingMs > 0) await new Promise((resolve) => setTimeout(resolve, remainingMs))
+    }
+    setExitingItems((items) => items.filter((exiting) => exiting.id !== item.id))
     return success
   }
   const handleLogout = () => {
@@ -76,7 +78,7 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
   const disabled = isBusy || !isOnline || household.isFromCache || household.hasPendingWrites
   const count = data ? Object.keys(data.list.items).length : 0
   return (
-    <main className="app-shell">
+    <main className={`app-shell ${isBusy ? 'is-saving' : ''}`}>
       <header className="app-header">
         <div className="flex items-center gap-3">
           <ShoppingBasket size={26} aria-hidden="true" />
@@ -86,6 +88,15 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
           </div>
         </div>
         <div className="flex gap-1">
+          <button
+            className="header-button"
+            disabled={disabled || !data || data.sections.length === 0}
+            onClick={() => setIsAddingItem(true)}
+            aria-label="Add item"
+            title="Add item"
+          >
+            <Plus size={22} />
+          </button>
           <button
             className="header-button"
             disabled={disabled || !data}
@@ -102,11 +113,9 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
       <div className="sync-status" role="status" aria-live="polite">
         {!isOnline
           ? 'Offline - reconnect to make changes.'
-          : isBusy || household.hasPendingWrites
-            ? 'Saving...'
-            : household.isFromCache
-              ? 'Connecting - shown data may be cached.'
-              : 'Synced with your household'}
+          : household.isFromCache
+            ? 'Connecting - shown data may be cached.'
+            : ''}
       </div>
       {(error || household.error) && (
         <div className="error mb-4" role="alert">
@@ -120,20 +129,6 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
       )}
       <div className="notice" role="status" aria-live="polite">
         {notice}
-        {undoId && data?.list.items[undoId] && (
-          <button
-            className="button-quiet ml-2"
-            disabled={disabled}
-            onClick={async () => {
-              if (
-                await operate(() => updateSelection(undoId, { type: 'remove' }), 'Item returned to catalog.')
-              )
-                setUndoId(null)
-            }}
-          >
-            Undo last addition
-          </button>
-        )}
       </div>
       {household.isLoading && (
         <p role="status" className="empty-state">
@@ -154,9 +149,8 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
             <CatalogTab
               data={data}
               isBusy={disabled}
-              exitingItem={exitingItem}
+              exitingItems={exitingItems}
               onSelect={handleSelect}
-              onAdd={() => setIsAddingItem(true)}
               onEdit={setEditingItem}
               onManage={() => setIsManaging(true)}
             />
@@ -169,12 +163,7 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
               onComplete={(id, completed) =>
                 operate(() => updateSelection(id, { type: 'complete', completed }))
               }
-              onRemove={(id) =>
-                operate(() => updateSelection(id, { type: 'remove' }), 'Item returned to catalog.')
-              }
-              onQuantity={(id, quantity) =>
-                operate(() => updateSelection(id, { type: 'quantity', quantity }), 'Quantity saved.')
-              }
+              onRemove={(id) => operate(() => updateSelection(id, { type: 'remove' }))}
               onReset={() => operate(resetList, 'New list ready. Choose your groceries.')}
             />
           </Tabs.Content>

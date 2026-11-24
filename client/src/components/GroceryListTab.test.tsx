@@ -16,15 +16,12 @@ describe('GroceryListTab', () => {
     isBusy: false,
     onComplete: vi.fn().mockResolvedValue(true),
     onRemove: vi.fn().mockResolvedValue(true),
-    onQuantity: vi.fn().mockResolvedValue(true),
     onReset: vi.fn().mockResolvedValue(true),
     onChoose: vi.fn(),
   })
-  it('hides quantity one, shows multiples, and has no catalog edit control', () => {
+  it('shows no quantity or catalog edit controls', () => {
     render(<GroceryListTab {...props()} />)
-    expect(screen.queryByText('×1')).not.toBeInTheDocument()
-    expect(screen.getByText('×3')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /quantity|edit/i })).not.toBeInTheDocument()
   })
   it('checks items without changing their position, and removes separately', async () => {
     const callbacks = props()
@@ -47,22 +44,11 @@ describe('GroceryListTab', () => {
     await user.click(screen.getByRole('button', { name: 'Remove Lemons from Grocery List' }))
     expect(callbacks.onRemove).toHaveBeenCalledWith('lemons')
   })
-  it('updates quantity separately from the checkbox', async () => {
-    const callbacks = props()
-    render(<GroceryListTab {...callbacks} />)
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Change quantity for Lemons, currently 1' }))
-    const input = screen.getByRole('spinbutton', { name: 'Quantity' })
-    await user.clear(input)
-    await user.type(input, '4')
-    await user.click(screen.getByRole('button', { name: 'Save quantity' }))
-    expect(callbacks.onQuantity).toHaveBeenCalledWith('lemons', 4)
-    expect(callbacks.onComplete).not.toHaveBeenCalled()
-  })
   it('requires reset confirmation and respects cancel', async () => {
     const callbacks = props()
     render(<GroceryListTab {...callbacks} />)
     const user = userEvent.setup()
+    expect(screen.getByText('0 of 2 in cart')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'New list' }))
     await user.click(screen.getByRole('button', { name: 'Keep current list' }))
     expect(callbacks.onReset).not.toHaveBeenCalled()

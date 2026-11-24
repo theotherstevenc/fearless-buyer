@@ -31,6 +31,10 @@
   button:disabled {
     @apply opacity-45 cursor-not-allowed;
   }
+  /* Brief saves keep controls readable instead of flashing the whole page. */
+  .is-saving button:disabled {
+    @apply opacity-100 cursor-progress;
+  }
   :focus-visible {
     outline: 3px solid var(--color-primary);
     outline-offset: 3px;
@@ -52,7 +56,10 @@
     @apply flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-white/15;
   }
   .sync-status {
-    @apply text-muted text-xs py-3;
+    @apply text-muted text-xs;
+  }
+  .sync-status:not(:empty) {
+    @apply py-3;
   }
   .tabs {
     @apply grid grid-cols-2 gap-1 rounded-xl bg-soft p-1 mb-6;
@@ -69,9 +76,6 @@
   .tab-content {
     @apply rounded-xl;
   }
-  .tab-heading {
-    @apply flex items-center justify-between gap-3 mb-5;
-  }
   .button-primary {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-white font-medium hover:bg-primary-hover;
   }
@@ -81,14 +85,11 @@
   .icon-button {
     @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-soft;
   }
-  .search-field {
-    @apply flex items-center gap-3 rounded-xl border border-border bg-surface px-4 text-muted;
+  .item-list {
+    @apply mt-4;
   }
-  .search-field input {
-    @apply border-0 bg-transparent px-0;
-  }
-  .grocery-section {
-    @apply mt-6;
+  .list-footer {
+    @apply mt-3 flex items-center justify-between gap-3 pl-2 text-sm text-muted;
   }
   .section-heading {
     @apply flex items-center justify-between gap-3 text-sm font-semibold text-muted mb-2;
@@ -101,6 +102,15 @@
   }
   .grocery-row {
     @apply flex items-center gap-1 px-2 min-h-16 border-b border-border last:border-b-0;
+  }
+  .catalog-row {
+    @apply grid grid-rows-[1fr] border-b border-border last:border-b-0;
+  }
+  .catalog-row-clip {
+    @apply min-h-0;
+  }
+  .catalog-row-body {
+    @apply flex items-center gap-1 px-2 min-h-16;
   }
   .select-item,
   .check-item {
@@ -125,12 +135,6 @@
   .row-completed {
     @apply bg-soft;
   }
-  .quantity-button {
-    @apply min-h-11 min-w-11 rounded-lg px-2 text-xs text-muted hover:bg-soft;
-  }
-  .quantity-button.has-quantity {
-    @apply text-sm font-semibold text-primary;
-  }
   .empty-state {
     @apply rounded-2xl border border-dashed border-border p-8 text-center mt-6;
   }
@@ -150,10 +154,7 @@
     @apply rounded-lg bg-danger-soft text-danger p-3 text-sm;
   }
   .notice {
-    @apply text-sm text-success;
-  }
-  .notice:not(:empty) {
-    @apply mb-4;
+    @apply min-h-5 text-sm text-success my-2;
   }
   .modal-overlay {
     @apply fixed inset-0 z-40 bg-foreground/40;
@@ -178,27 +179,32 @@
   }
 }
 
+/* Keep the duration in sync with CATALOG_EXIT_DURATION_MS in App.tsx. */
 .row-exiting {
-  animation: leave-catalog 220ms ease-in forwards;
+  animation: leave-catalog 450ms forwards;
   pointer-events: none;
+}
+.row-exiting .catalog-row-clip {
+  overflow: hidden;
 }
 @keyframes leave-catalog {
   0% {
     opacity: 1;
     transform: translateX(0);
-    max-height: 200px;
+    grid-template-rows: 1fr;
+    animation-timing-function: cubic-bezier(0.4, 0, 1, 1);
   }
-  70% {
+  50% {
     opacity: 0;
-    transform: translateX(12px);
-    max-height: 200px;
+    transform: translateX(32px);
+    grid-template-rows: 1fr;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
   100% {
     opacity: 0;
-    transform: translateX(12px);
-    max-height: 0;
-    min-height: 0;
-    border-width: 0;
+    transform: translateX(32px);
+    grid-template-rows: 0fr;
+    border-bottom-width: 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {
