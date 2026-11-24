@@ -1,12 +1,13 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { signOut } from 'firebase/auth'
-import { LogOut, Plus, Settings2, ShoppingBasket } from 'lucide-react'
+import { LogOut, Plus, Settings2 } from 'lucide-react'
 import { useState } from 'react'
 
 import { CatalogTab } from './components/CatalogTab'
 import { GroceryListTab } from './components/GroceryListTab'
 import { ItemEditor } from './components/ItemEditor'
 import { LoginPage } from './components/LoginPage'
+import { Modal } from './components/Modal'
 import { StoreManager } from './components/StoreManager'
 import { useAuth } from './context/useAuth'
 import { useConnectivity } from './hooks/useConnectivity'
@@ -37,6 +38,7 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
   const [editingItem, setEditingItem] = useState<CatalogItem | undefined>()
   const [isAddingItem, setIsAddingItem] = useState(false)
   const [isManaging, setIsManaging] = useState(false)
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false)
 
   const operate = async (operation: () => Promise<void>, message = ''): Promise<boolean> => {
     if (isBusy) return false
@@ -71,25 +73,19 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
     setExitingItems((items) => items.filter((exiting) => exiting.id !== item.id))
     return success
   }
-  const handleLogout = () => {
-    void operate(() => signOut(auth))
-  }
   const data = household.data
   const disabled = isBusy || !isOnline || household.isFromCache || household.hasPendingWrites
   const count = data ? Object.keys(data.list.items).length : 0
   return (
     <main className={`app-shell ${isBusy ? 'is-saving' : ''}`}>
       <header className="app-header">
-        <div className="flex items-center gap-3">
-          <ShoppingBasket size={26} aria-hidden="true" />
-          <div>
-            <h1 className="text-xl font-semibold">Fearless Buyer</h1>
-            <p className="text-sm opacity-80">Your weekly haul, in order.</p>
-          </div>
+        <div className="brand-copy min-w-0">
+          <h1 className="text-2xl min-[390px]:text-3xl font-bold">Fearless Buyer</h1>
+          <p className="text-base min-[390px]:text-lg opacity-80">Your weekly haul, in order.</p>
         </div>
-        <div className="flex gap-1">
+        <div className="flex shrink-0 gap-1">
           <button
-            className="header-button"
+            className="header-button max-[390px]:hidden"
             disabled={disabled || !data || data.sections.length === 0}
             onClick={() => setIsAddingItem(true)}
             aria-label="Add item"
@@ -102,11 +98,9 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
             disabled={disabled || !data}
             onClick={() => setIsManaging(true)}
             aria-label="Manage store and catalog"
+            title="Manage store and catalog"
           >
             <Settings2 size={21} />
-          </button>
-          <button className="header-button" disabled={isBusy} onClick={handleLogout} aria-label="Sign out">
-            <LogOut size={21} />
           </button>
         </div>
       </header>
@@ -117,7 +111,7 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
             ? 'Connecting - shown data may be cached.'
             : ''}
       </div>
-      {(error || household.error) && (
+      {(error || household.error) && !isLogoutOpen && (
         <div className="error mb-4" role="alert">
           {error || household.error}
           {household.error && (
@@ -132,12 +126,12 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
       </div>
       {household.isLoading && (
         <p role="status" className="empty-state">
-          Loading your groceries...
+          Loading your items...
         </p>
       )}
       {data && (
         <Tabs.Root value={tab} onValueChange={setTab}>
-          <Tabs.List className="tabs" aria-label="Grocery views">
+          <Tabs.List className="tabs" aria-label="Shopping views">
             <Tabs.Trigger className="tab-button" value="catalog">
               Catalog
             </Tabs.Trigger>
@@ -164,7 +158,7 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
                 operate(() => updateSelection(id, { type: 'complete', completed }))
               }
               onRemove={(id) => operate(() => updateSelection(id, { type: 'remove' }))}
-              onReset={() => operate(resetList, 'New list ready. Choose your groceries.')}
+              onReset={() => operate(resetList, 'New list ready. Choose your items.')}
             />
           </Tabs.Content>
         </Tabs.Root>
@@ -182,7 +176,48 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
       {data && isManaging && (
         <StoreManager data={data} isDisabled={disabled} onClose={() => setIsManaging(false)} />
       )}
-      <footer className="app-footer">Made for your household. No aisle numbers required.</footer>
+      <footer className="app-footer">
+        <p>Made for your household. No aisle numbers required.</p>
+        <button
+          className="button-quiet mt-2"
+          disabled={isBusy}
+          onClick={() => {
+            setError('')
+            setIsLogoutOpen(true)
+          }}
+        >
+          <LogOut size={18} aria-hidden="true" />
+          Sign out
+        </button>
+      </footer>
+      <Modal
+        isOpen={isLogoutOpen}
+        title="Sign out?"
+        description="Your list will be here when you sign back in."
+        onClose={() => {
+          if (!isBusy) setIsLogoutOpen(false)
+        }}
+      >
+        {error && (
+          <p className="error mb-3" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button className="button-quiet" disabled={isBusy} onClick={() => setIsLogoutOpen(false)}>
+            Stay signed in
+          </button>
+          <button
+            className="button-primary"
+            disabled={isBusy}
+            onClick={() => {
+              void operate(() => signOut(auth))
+            }}
+          >
+            Sign out
+          </button>
+        </div>
+      </Modal>
     </main>
   )
 }

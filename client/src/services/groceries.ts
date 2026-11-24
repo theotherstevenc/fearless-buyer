@@ -27,7 +27,7 @@ export const updateSelection = async (itemId: string, action: ListAction): Promi
     const list = snapshot.exists() ? activeListSchema.parse(snapshot.data()) : EMPTY_LIST
     if (action.type === 'select') {
       const item = await transaction.get(doc(catalogRef, itemId))
-      if (!item.exists()) throw new Error('This grocery no longer exists in the catalog.')
+      if (!item.exists()) throw new Error('This item no longer exists in the catalog.')
     }
     const updated = changeSelection(list, itemId, action)
     if (!snapshot.exists()) throw new Error('Household setup is incomplete. Create the active list first.')
@@ -89,7 +89,7 @@ export const saveCatalogItem = async (
       throw new Error('Catalog changed. Please try again with the latest order.')
     const ref = existing ? doc(catalogRef, existing.id) : doc(catalogRef)
     const current = existing ? await transaction.get(ref) : null
-    if (existing && !current?.exists()) throw new Error('This grocery no longer exists.')
+    if (existing && !current?.exists()) throw new Error('This item no longer exists.')
     const stored = current?.exists() ? catalogItemSchema.parse(current.data()) : null
     const section = await transaction.get(doc(sectionsRef, sectionId))
     if (!section.exists()) throw new Error('Choose an existing store section.')
@@ -148,7 +148,7 @@ export const removeEmptySection = async (section: Section, expectedRevision: num
       throw new Error('Store layout changed. Try again with the latest order.')
     if (!current.exists()) throw new Error('This section was already removed.')
     if (sectionSchema.parse(current.data()).itemCount !== 0) {
-      throw new Error('Move the groceries in this section to another section before removing it.')
+      throw new Error('Move the items in this section to another section before removing it.')
     }
     transaction.delete(current.ref)
     transaction.set(orderRef, { revision: revision + 1 })
@@ -163,11 +163,11 @@ export const deleteCatalogItem = async (itemId: string, expectedRevision: number
     const revision = order.exists() ? readRevision(order.data()) : 0
     if (revision !== expectedRevision)
       throw new Error('Catalog changed. Please try again with the latest items.')
-    if (!current.exists()) throw new Error('This grocery was already deleted.')
+    if (!current.exists()) throw new Error('This item was already deleted.')
     if (!list.exists()) throw new Error('Household setup is incomplete. Create the active list first.')
     const item = catalogItemSchema.parse(current.data())
     const section = await transaction.get(doc(sectionsRef, item.sectionId))
-    if (!section.exists()) throw new Error("This grocery's store section no longer exists.")
+    if (!section.exists()) throw new Error("This item's store section no longer exists.")
     const storedSection = sectionSchema.parse(section.data())
     if (storedSection.itemCount === 0)
       throw new Error('The store section count is inconsistent. Please retry.')

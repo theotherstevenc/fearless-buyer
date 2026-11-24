@@ -1,6 +1,6 @@
-import { act, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { SortableRows } from './SortableRows'
 
@@ -21,7 +21,68 @@ const deferredSave = () => {
 const labels = () =>
   screen.getAllByRole('listitem').map((row) => within(row).getByText(/Lemons|Apples|Pears/).textContent)
 
+afterEach(() => {
+  if (vi.isFakeTimers()) act(() => vi.runOnlyPendingTimers())
+  vi.useRealTimers()
+})
+
 describe('SortableRows', () => {
+  it('reorders from a held mouse press, but not from a short click', async () => {
+    vi.useFakeTimers()
+    const onReorder = vi.fn().mockResolvedValue(true)
+    render(<SortableRows rows={rows} isBusy={false} onReorder={onReorder} />)
+    const name = screen.getByRole('button', { name: 'Hold Lemons to reorder' })
+    screen.getAllByRole('listitem').forEach((row, index) => {
+      vi.spyOn(row, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, index * 56, 400, 56))
+    })
+
+    fireEvent.mouseDown(name, { button: 0, clientX: 20, clientY: 20 })
+    act(() => vi.advanceTimersByTime(100))
+    expect(name).not.toHaveAttribute('aria-pressed', 'true')
+    fireEvent.mouseUp(document)
+    act(() => vi.advanceTimersByTime(300))
+    expect(name).not.toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.mouseDown(name, { button: 0, clientX: 20, clientY: 20 })
+    act(() => vi.advanceTimersByTime(300))
+    expect(name).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.mouseMove(document, { clientX: 20, clientY: 80 })
+    await act(async () => fireEvent.mouseUp(document))
+    expect(onReorder).toHaveBeenCalledWith(['apples', 'lemons', 'pears'])
+    expect(labels()).toEqual(['Apples', 'Lemons', 'Pears'])
+  })
+
+  it('allows a held touch to drag and cancels activation when a touch moves to scroll', () => {
+    vi.useFakeTimers()
+    render(<SortableRows rows={rows} isBusy={false} onReorder={vi.fn().mockResolvedValue(true)} />)
+    const name = screen.getByRole('button', { name: 'Hold Lemons to reorder' })
+    const touch = { identifier: 1, clientX: 20, clientY: 20 }
+
+    fireEvent.touchStart(name, { touches: [touch] })
+    fireEvent.touchMove(name, { touches: [{ ...touch, clientY: 40 }] })
+    act(() => vi.advanceTimersByTime(300))
+    expect(name).not.toHaveAttribute('aria-pressed', 'true')
+    fireEvent.touchEnd(name, { touches: [], changedTouches: [touch] })
+
+    fireEvent.touchStart(name, { touches: [touch] })
+    act(() => vi.advanceTimersByTime(300))
+    expect(name).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.touchEnd(name, { touches: [], changedTouches: [touch] })
+  })
+
+  it('keeps keyboard drag activation and cancellation available', () => {
+    vi.useFakeTimers()
+    render(<SortableRows rows={rows} isBusy={false} onReorder={vi.fn().mockResolvedValue(true)} />)
+    const name = screen.getByRole('button', { name: 'Hold Lemons to reorder' })
+    name.focus()
+
+    fireEvent.keyDown(name, { code: 'Space' })
+    act(() => vi.advanceTimersByTime(0))
+    expect(name).toHaveAttribute('aria-pressed', 'true')
+    fireEvent.keyDown(document, { code: 'Escape' })
+    expect(name).not.toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('keeps a moved row in place while saving and accepts subsequent shared ordering', async () => {
     const save = deferredSave()
     const onReorder = vi.fn().mockReturnValue(save.promise)

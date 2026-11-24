@@ -21,6 +21,7 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
   const [editingSection, setEditingSection] = useState<Section | undefined>()
   const [editingItem, setEditingItem] = useState<CatalogItem | undefined>()
   const [deletingItem, setDeletingItem] = useState<CatalogItem | undefined>()
+  const [deletingSection, setDeletingSection] = useState<Section | undefined>()
   const [isAddingItem, setIsAddingItem] = useState(false)
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState('')
@@ -50,47 +51,54 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
   return (
     <Modal
       isOpen
-      title="Manage your store"
-      description="Arrange sections in your walking order, then groceries within each section. This includes items already on your list."
+      title="Your store, your route"
+      description="Arrange sections and items in the order you shop. Hold a name to drag, or use the arrows."
       onClose={() => {
         if (!isBusy) onClose()
       }}
     >
       <div className={`space-y-5 ${isBusy ? 'is-saving' : ''}`} aria-busy={isBusy}>
-        {error && !deletingItem && (
+        {error && !deletingItem && !deletingSection && (
           <p role="alert" className="error">
             {error}
           </p>
         )}
         <form onSubmit={handleSectionSave} className="space-y-3">
-          <label className="field">
-            {editingSection ? 'Rename section' : 'New section'}
-            <input
-              required
-              maxLength={100}
-              placeholder="For example: Produce"
-              value={sectionName}
-              onChange={(event) => setSectionName(event.target.value)}
-            />
-          </label>
-          <div className="flex gap-2">
+          <div className="section-form">
+            <label className="field">
+              <span className="sr-only">{editingSection ? 'Rename section' : 'Section name'}</span>
+              <input
+                required
+                maxLength={100}
+                autoComplete="off"
+                data-1p-ignore
+                disabled={disabled}
+                placeholder="For example: Produce"
+                value={sectionName}
+                onChange={(event) => setSectionName(event.target.value)}
+              />
+            </label>
             <button className="button-primary" type="submit" disabled={disabled}>
               {editingSection ? 'Save section' : 'Add section'}
             </button>
-            {editingSection && (
-              <button
-                className="button-quiet"
-                type="button"
-                onClick={() => {
-                  setEditingSection(undefined)
-                  setSectionName('')
-                }}
-              >
-                Cancel rename
-              </button>
-            )}
           </div>
+          {editingSection && (
+            <button
+              className="button-quiet"
+              type="button"
+              disabled={disabled}
+              onClick={() => {
+                setEditingSection(undefined)
+                setSectionName('')
+              }}
+            >
+              Cancel rename
+            </button>
+          )}
         </form>
+        {groups.length === 0 && (
+          <p className="manage-empty">Add your first section to start organizing your items.</p>
+        )}
         {groups.length > 0 && (
           <>
             <h3 className="font-semibold">Section order</h3>
@@ -115,12 +123,11 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
                     <button
                       className={`icon-button ${section.itemCount > 0 ? 'is-unavailable' : ''}`}
                       disabled={disabled || section.itemCount > 0}
-                      title={
-                        section.itemCount ? 'Move groceries out before removing this section' : undefined
-                      }
+                      title={section.itemCount ? 'Move items out before removing this section' : undefined}
                       aria-label={`Remove empty section ${section.name}`}
                       onClick={() => {
-                        void operate(() => removeEmptySection(section, data.revision))
+                        setError('')
+                        setDeletingSection(section)
                       }}
                     >
                       <Trash2 size={16} />
@@ -132,44 +139,47 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
             />
             <button className="button-primary" disabled={disabled} onClick={() => setIsAddingItem(true)}>
               <Plus size={18} aria-hidden="true" />
-              Add grocery
+              Add item
             </button>
             {groups.map(({ section, items }) => (
-              <section key={section.id}>
-                <h3 className="section-heading">{section.name}</h3>
-                <SortableRows
-                  isBusy={disabled}
-                  rows={items.map((item) => ({
-                    id: item.id,
-                    label: item.name,
-                    actions: (
-                      <>
-                        <button
-                          className="icon-button"
-                          disabled={disabled}
-                          aria-label={`Edit ${item.name}`}
-                          onClick={() => setEditingItem(item)}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          className="icon-button text-danger"
-                          disabled={disabled}
-                          aria-label={`Delete ${item.name} from catalog`}
-                          onClick={() => {
-                            setError('')
-                            setDeletingItem(item)
-                          }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </>
-                    ),
-                  }))}
-                  onReorder={(ids) => operate(() => reorder('catalog', ids, data.revision))}
-                />
-                {items.length === 0 && (
-                  <p className="text-muted text-sm">No groceries in this section yet.</p>
+              <section key={section.id} aria-label={`${section.name} items`}>
+                <h3 className="section-heading" title={section.name}>
+                  {section.name}
+                </h3>
+                {items.length > 0 ? (
+                  <SortableRows
+                    isBusy={disabled}
+                    rows={items.map((item) => ({
+                      id: item.id,
+                      label: item.name,
+                      actions: (
+                        <>
+                          <button
+                            className="icon-button"
+                            disabled={disabled}
+                            aria-label={`Edit ${item.name}`}
+                            onClick={() => setEditingItem(item)}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            className="icon-button text-danger"
+                            disabled={disabled}
+                            aria-label={`Delete ${item.name} from catalog`}
+                            onClick={() => {
+                              setError('')
+                              setDeletingItem(item)
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      ),
+                    }))}
+                    onReorder={(ids) => operate(() => reorder('catalog', ids, data.revision))}
+                  />
+                ) : (
+                  <p className="manage-empty">No items here yet.</p>
                 )}
               </section>
             ))}
@@ -187,9 +197,46 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
         />
       )}
       <Modal
+        isOpen={!!deletingSection}
+        title={`Delete ${deletingSection?.name ?? 'section'}?`}
+        description="This removes the empty section from your store for both of you."
+        onClose={() => {
+          if (!isBusy) setDeletingSection(undefined)
+        }}
+      >
+        {error && (
+          <p role="alert" className="error mb-3">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button className="button-quiet" disabled={disabled} onClick={() => setDeletingSection(undefined)}>
+            Keep section
+          </button>
+          <button
+            className="button-danger"
+            disabled={disabled}
+            onClick={async () => {
+              if (
+                deletingSection &&
+                (await operate(() => removeEmptySection(deletingSection, data.revision)))
+              ) {
+                if (editingSection?.id === deletingSection.id) {
+                  setEditingSection(undefined)
+                  setSectionName('')
+                }
+                setDeletingSection(undefined)
+              }
+            }}
+          >
+            Delete section
+          </button>
+        </div>
+      </Modal>
+      <Modal
         isOpen={!!deletingItem}
-        title={`Delete ${deletingItem?.name ?? 'grocery'}?`}
-        description="This permanently removes the grocery from your catalog and the current list for both of you."
+        title={`Delete ${deletingItem?.name ?? 'item'}?`}
+        description="This permanently removes the item from your catalog and the current list for both of you."
         onClose={() => {
           if (!isBusy) setDeletingItem(undefined)
         }}
@@ -201,7 +248,7 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
         )}
         <div className="flex justify-end gap-2">
           <button className="button-quiet" disabled={disabled} onClick={() => setDeletingItem(undefined)}>
-            Keep grocery
+            Keep item
           </button>
           <button
             className="button-danger"
@@ -212,7 +259,7 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
               }
             }}
           >
-            Delete grocery
+            Delete item
           </button>
         </div>
       </Modal>

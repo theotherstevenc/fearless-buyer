@@ -1,4 +1,4 @@
-import { Check, ShoppingBasket, X } from 'lucide-react'
+import { Check, RotateCcw, ShoppingBasket, X } from 'lucide-react'
 import { useState } from 'react'
 
 import { groupGroceries } from '../lib/groceries'
@@ -71,7 +71,8 @@ export const GroceryListTab = ({
           <p>
             {completed} of {selected.length} in cart
           </p>
-          <button className="button-quiet" disabled={isBusy} onClick={() => setIsResetOpen(true)}>
+          <button className="button-primary" disabled={isBusy} onClick={() => setIsResetOpen(true)}>
+            <RotateCcw size={18} aria-hidden="true" />
             New list
           </button>
         </div>
@@ -82,14 +83,14 @@ export const GroceryListTab = ({
           <h3 className="font-semibold">A fresh list starts here</h3>
           <p className="text-muted mt-2">Choose what you need from your catalog.</p>
           <button className="button-primary mt-5" onClick={onChoose}>
-            Choose groceries
+            Choose items
           </button>
         </div>
       )}
       <Modal
         isOpen={isResetOpen}
         title="Start a new list?"
-        description="This clears every selected grocery and checkmark for both of you. Your catalog and store order stay unchanged."
+        description="This clears every selected item and checkmark for both of you. Your catalog and store order stay unchanged."
         onClose={() => {
           if (!isBusy) setIsResetOpen(false)
         }}

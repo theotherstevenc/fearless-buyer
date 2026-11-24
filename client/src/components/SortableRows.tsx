@@ -4,7 +4,8 @@ import type { ReactNode } from 'react'
 import {
   DndContext,
   KeyboardSensor,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   closestCenter,
   useSensor,
   useSensors,
@@ -18,6 +19,9 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ArrowDown, ArrowUp, GripVertical } from 'lucide-react'
+
+const DRAG_HOLD_DURATION_MS = 300
+const DRAG_MOVEMENT_TOLERANCE_PX = 6
 
 interface SortableRow {
   id: string
@@ -57,7 +61,16 @@ const DragRow = ({ row, isBusy, isFirst, isLast, onMove }: DragRowProps) => {
       >
         <GripVertical size={18} />
       </button>
-      <span className="manage-row-label">{row.label}</span>
+      <button
+        className="manage-row-label"
+        {...attributes}
+        {...listeners}
+        disabled={isBusy}
+        aria-label={`Hold ${row.label} to reorder`}
+        title={row.label}
+      >
+        {row.label}
+      </button>
       <div className="manage-row-actions">
         <button
           className={`icon-button ${isFirst ? 'is-unavailable' : ''}`}
@@ -85,7 +98,12 @@ export const SortableRows = ({ rows, isBusy, onReorder }: SortableRowsProps) => 
   const [pendingOrder, setPendingOrder] = useState<{ sourceOrder: string; ids: string[] } | null>(null)
   const [isReordering, setIsReordering] = useState(false)
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(MouseSensor, {
+      activationConstraint: { delay: DRAG_HOLD_DURATION_MS, tolerance: DRAG_MOVEMENT_TOLERANCE_PX },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: DRAG_HOLD_DURATION_MS, tolerance: DRAG_MOVEMENT_TOLERANCE_PX },
+    }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   )
   const sourceIds = rows.map((row) => row.id)

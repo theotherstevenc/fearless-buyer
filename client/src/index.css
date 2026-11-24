@@ -1,22 +1,64 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/geist';
+@import '@fontsource/kalam/latin-400.css';
+@import '@fontsource/kalam/latin-700.css';
 
 @theme {
   --font-sans: 'Geist Variable', sans-serif;
+  --font-display: 'Kalam', 'Geist Variable', sans-serif;
   --color-primary: #274963;
   --color-primary-hover: #19384e;
+  --color-on-primary: #ffffff;
+  --color-brand-surface: #274963;
+  --color-on-brand: #ffffff;
   --color-background: #f5f7fa;
   --color-surface: #ffffff;
   --color-foreground: #1d2d3a;
   --color-muted: #586b79;
   --color-border: #dce3e9;
+  --color-control-border: #dce3e9;
   --color-soft: #edf2f6;
   --color-danger: #a22d35;
   --color-danger-soft: #fff0f1;
+  --color-on-danger: #ffffff;
   --color-success: #255f47;
+  --color-on-success: #ffffff;
+  --color-overlay: #1d2d3a;
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --color-primary: #a9cee7;
+      --color-primary-hover: #c4dff0;
+      --color-on-primary: #102332;
+      --color-brand-surface: #1a354a;
+      --color-on-brand: #e7edf3;
+      --color-background: #101820;
+      --color-surface: #18232e;
+      --color-foreground: #e7edf3;
+      --color-muted: #a9b7c5;
+      --color-border: #3e5264;
+      --color-control-border: #73899e;
+      --color-soft: #233240;
+      --color-danger: #ffb1b6;
+      --color-danger-soft: #392229;
+      --color-on-danger: #431218;
+      --color-success: #92d0ac;
+      --color-on-success: #103322;
+      --color-overlay: #000000;
+    }
+  }
+  * {
+    scrollbar-width: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
   body {
     @apply m-0 bg-background text-foreground font-sans antialiased;
   }
@@ -41,7 +83,7 @@
   }
   input,
   select {
-    @apply w-full rounded-lg border border-border bg-surface px-3 py-3 min-h-11;
+    @apply w-full rounded-lg border border-control-border bg-surface px-3 py-3 min-h-11;
   }
 }
 
@@ -50,10 +92,13 @@
     @apply mx-auto max-w-3xl px-4 py-5 sm:px-6 sm:py-8;
   }
   .app-header {
-    @apply flex items-center justify-between gap-3 rounded-2xl bg-primary text-white px-5 py-5;
+    @apply flex items-center justify-between gap-3 rounded-2xl bg-brand-surface text-on-brand px-5 py-5;
+  }
+  .brand-copy {
+    @apply font-display;
   }
   .header-button {
-    @apply flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-white/15;
+    @apply flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-on-brand/15;
   }
   .sync-status {
     @apply text-muted text-xs;
@@ -77,13 +122,13 @@
     @apply rounded-xl;
   }
   .button-primary {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-white font-medium hover:bg-primary-hover;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-on-primary font-medium hover:bg-primary-hover;
   }
   .button-quiet {
     @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-primary hover:bg-soft;
   }
   .button-danger {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-danger px-4 py-2 text-white font-medium hover:brightness-90;
+    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-danger px-4 py-2 text-on-danger font-medium hover:brightness-90;
   }
   .icon-button {
     @apply inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-soft;
@@ -92,10 +137,10 @@
     @apply mt-4;
   }
   .list-footer {
-    @apply mt-3 flex items-center justify-between gap-3 pl-2 text-sm text-muted;
+    @apply mt-3 flex items-center justify-between gap-3 rounded-xl bg-soft p-3 text-sm text-muted;
   }
   .section-heading {
-    @apply flex items-center justify-between gap-3 text-sm font-semibold text-muted mb-2;
+    @apply truncate text-sm font-semibold text-muted mb-2;
   }
   .section-heading span {
     @apply text-xs font-normal;
@@ -127,10 +172,10 @@
     @apply flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-soft text-primary;
   }
   .check-box {
-    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-border;
+    @apply flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 border-control-border;
   }
   .row-completed .check-box {
-    @apply border-success bg-success text-white;
+    @apply border-success bg-success text-on-success;
   }
   .row-completed .item-name {
     @apply line-through text-muted;
@@ -148,7 +193,7 @@
     @apply mx-auto max-w-md px-5 pt-16 pb-8;
   }
   .brand-mark {
-    @apply inline-flex rounded-2xl bg-primary p-4 text-white mb-5;
+    @apply inline-flex rounded-2xl bg-brand-surface p-4 text-on-brand mb-5;
   }
   .field {
     @apply flex flex-col gap-2 text-sm font-medium;
@@ -160,19 +205,33 @@
     @apply min-h-5 text-sm text-success my-2;
   }
   .modal-overlay {
-    @apply fixed inset-0 z-40 bg-foreground/40;
+    @apply fixed inset-0 z-50 bg-overlay/55 backdrop-blur-[2px];
   }
   .modal-content {
-    @apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl bg-surface p-5 shadow-xl sm:p-6;
+    @apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-2xl sm:p-6;
   }
   .manage-rows {
     @apply list-none p-0 m-0 rounded-lg border border-border bg-surface;
   }
   .manage-row {
-    @apply flex flex-wrap items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1 first:rounded-t-[inherit] last:rounded-b-[inherit];
+    @apply flex flex-wrap items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1 first:rounded-t-lg last:rounded-b-lg;
   }
   .manage-row-label {
-    @apply flex-1 min-w-24 break-words;
+    @apply flex-1 min-w-24 min-h-11 truncate text-left rounded-md px-1;
+    touch-action: pan-y;
+    user-select: none;
+  }
+  .section-form {
+    @apply flex items-center gap-2;
+  }
+  .section-form .field {
+    @apply flex-1 min-w-0;
+  }
+  .section-form .button-primary {
+    @apply shrink-0;
+  }
+  .manage-empty {
+    @apply rounded-lg border border-dashed border-border bg-soft p-4 text-sm text-muted;
   }
   .manage-row-actions {
     @apply flex shrink-0 ml-auto;

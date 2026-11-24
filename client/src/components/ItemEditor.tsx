@@ -45,8 +45,7 @@ export const ItemEditor = ({ data, item, onClose }: ItemEditorProps) => {
   return (
     <Modal
       isOpen
-      title={item ? 'Edit grocery' : 'Add grocery'}
-      description="Saved to your reusable catalog. Selecting it is a separate step."
+      title={item ? 'Edit item' : 'What else sounds good?'}
       onClose={() => {
         if (!isBusy) onClose()
       }}
@@ -58,6 +57,8 @@ export const ItemEditor = ({ data, item, onClose }: ItemEditorProps) => {
             autoFocus
             required
             maxLength={100}
+            autoComplete="off"
+            data-1p-ignore
             value={name}
             onChange={(event) => setName(event.target.value)}
             aria-describedby={error ? 'item-error' : undefined}
@@ -86,7 +87,7 @@ export const ItemEditor = ({ data, item, onClose }: ItemEditorProps) => {
             Cancel
           </button>
           <button type="submit" className="button-primary" disabled={isBusy}>
-            {isBusy ? 'Saving...' : 'Save grocery'}
+            {isBusy ? 'Saving...' : 'Save item'}
           </button>
         </div>
       </form>

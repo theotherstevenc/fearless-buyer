@@ -39,7 +39,7 @@ export const CatalogTab = ({ data, isBusy, exitingItems, onSelect, onEdit, onMan
     }
   }
   return (
-    <section ref={sectionRef} tabIndex={-1} className="outline-none" aria-label="Grocery catalog">
+    <section ref={sectionRef} tabIndex={-1} className="outline-none" aria-label="Item catalog">
       {items.length > 0 && (
         <ul className="rows item-list">
           {items.map((item) => (
@@ -76,17 +76,17 @@ export const CatalogTab = ({ data, isBusy, exitingItems, onSelect, onEdit, onMan
       {items.length === 0 && (
         <div className="empty-state">
           <h3 className="font-semibold">
-            {data.catalog.length ? 'Everything is on your list' : 'Make this your store'}
+            {data.catalog.length ? "You're all set. Happy shopping!" : 'Make this your store'}
           </h3>
-          <p className="text-muted mt-2">
-            {data.catalog.length
-              ? 'Open Grocery List to start shopping.'
-              : 'Create your first section, then add your usual groceries. Aisle numbers are optional.'}
-          </p>
           {data.catalog.length === 0 && (
-            <button className="button-primary mt-5" onClick={onManage}>
-              Set up store sections
-            </button>
+            <>
+              <p className="text-muted mt-2">
+                Create your first section, then add your usual items. Aisle numbers are optional.
+              </p>
+              <button className="button-primary mt-5" onClick={onManage}>
+                Set up store sections
+              </button>
+            </>
           )}
         </div>
       )}

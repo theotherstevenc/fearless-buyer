@@ -48,6 +48,194 @@ resources, or deployments have been created.
 
 ## Implementation progress
 
+### Commit checkpoint (2026-11-23 evening)
+
+- User authorized one local commit for the accumulated UX changes:
+  `feat: refine shopping UI and add system dark mode`. Scope includes management
+  improvements, item/dialog copy, confirmation/focus handling, system-only dark
+  mode, locally served Kalam header typography, narrow-phone header layout,
+  regression tests, dependency lockfile, and this handoff. `docs/list.md` and
+  ignored local emulator data are excluded. No push or deployment is authorized.
+- Final pre-commit validation: ESLint, full Prettier check, TypeScript/production
+  build, all 37 client tests, and all 20 isolated emulator tests pass. The existing
+  large-chunk warning remains (813.80 kB JS, 247.26 kB gzip). Latest desktop UX
+  feedback was positive; physical-phone, VoiceOver, and full two-person checks
+  remain manual and incomplete.
+- Repo-local author identity and GPG signing configuration match the previous
+  verified signed commit. Global Git configuration was not changed. The preceding
+  management commit in current Git history is `ccf8e2b`; earlier handoffs used
+  `8607afb`. Use `git log -1 --show-signature` for the new commit's identity.
+- App and emulators remain running. Automatic persistence and local-to-production
+  migration are not implemented; export Auth/Firestore before shutdown to retain
+  newly entered data. No production resources exist. README, dependency/bundle
+  assessment, persistence, and remaining manual validation are unfinished.
+
+### Resumed session (2026-11-23 evening)
+
+- Restored `.firebase/session-handoff-2026-11-23/` without running
+  `setup:local` or changing household data. Auth emulator accounts match the
+  snapshot; the household has both members, 5 sections, 3 groceries, an empty
+  active list, and ordering metadata.
+- App and emulators are running as detached local processes under Node 24.19.0
+  and npm 11.19.0. HTTP readiness verified at http://127.0.0.1:5173 and
+  http://127.0.0.1:4000. Existing local credentials are unchanged.
+- Snapshot restoration is verified. Automatic persistence is still pending;
+  this run imports the previous snapshot but does not export on exit.
+- Next: manual management retesting and two-person/responsive/accessibility
+  verification. Browser automation remains removed; no visual checks are
+  claimed from HTTP or data-restoration checks.
+- No commit, push, production provisioning, or deployment was performed.
+  Existing uncommitted plan edits are preserved; `docs/list.md` is untouched.
+
+### Management and shopping UX feedback pass (2026-11-23 evening)
+
+- Continue tracking this focused UX pass here; a separate plan is unnecessary.
+  The user confirmed the preceding management fixes looked good.
+- Empty sections now show a deliberate bordered empty state instead of an empty
+  sortable-list border. An empty store also has a first-section prompt.
+- Management copy is now "Your store, your route" and "Arrange sections and
+  groceries in the order you shop. Hold a name to drag, or use the arrows."
+- Section name and Add/Save section controls share a row. The redundant visible
+  New section label is removed while an accessible input label remains. Long
+  section headings and row names truncate with an ellipsis; full names remain
+  available to screen readers and in hover titles.
+- Management rows use explicit matching top/bottom corner radii. Scrollbars are
+  hidden without disabling scrolling. The app header can wrap on narrow screens.
+- Holding a row name or drag handle for 300 ms activates mouse/touch reordering.
+  Moving before activation cancels the hold so touch scrolling remains available.
+  Keyboard dragging and explicit move arrows remain supported.
+- Add/Edit grocery dialogs no longer show the redundant heading or catalog
+  explanation. Dialogs retain accessible names. Grocery and section name fields
+  use `autocomplete="off"` and `data-1p-ignore`; these request suppression from
+  1Password, but extension behavior still needs manual verification. Login
+  credential autofill remains enabled.
+- The all-selected catalog message is "You're all set. Happy shopping!" with
+  no "Open Grocery List" instruction.
+- Sign out is now a labeled footer button rather than an ambiguous header icon,
+  with a confirmation and an in-dialog retryable error. New list is a filled
+  button with a reset icon in a matching footer panel; reset still confirms.
+- Empty-section deletion now requires confirmation, supports cancellation,
+  surfaces failure in the dialog, and clears an active rename after success.
+  Populated sections remain protected from deletion.
+- Regression coverage includes empty sections, confirmed section deletion and
+  failed-delete recovery, actual held-mouse reordering, held-touch activation
+  and scroll cancellation, keyboard activation/cancellation, sign-out
+  confirmation/cancellation, and failed-sign-out recovery.
+- Verified after this pass: ESLint, full Prettier check, TypeScript/production
+  build, all 33 client tests, and all 20 isolated emulator rules/service tests
+  pass. Rules tests ran against `demo-fearless-buyer-tests` on the existing
+  emulator, not a second emulator process or the live household.
+- App and Emulator UI still return HTTP 200. Latest visual/phone/VoiceOver checks
+  remain manual; no browser automation was added. The existing large-chunk
+  warning remains (813.80 kB JS, 247.26 kB gzip). Dependency assessment, bundle-size
+  work, README, and automatic emulator persistence remain separate unfinished
+  plan items. No commit was authorized at that checkpoint.
+
+### Item wording and dialog separation follow-up (2026-11-23 evening)
+
+- User confirmed the UX pass is looking good. Add/edit/save/delete/choose actions
+  and related item copy now use the more casual "item"/"items" rather than
+  "grocery"/"groceries". The Grocery List tab name, storage model, and internal
+  service/component names are unchanged.
+- Initially removed the Add/Edit item header row and X. At the user's subsequent
+  request, restored the visible "Add item"/"Edit item" header and X close button.
+  The redundant catalog explanation stays removed. Cancel and Escape still
+  dismiss the form without saving.
+- User then approved "What else sounds good?" for the add-item dialog heading.
+  The edit heading remains "Edit item"; action labels remain Add item/Save item.
+  All 10 targeted editor/management tests and targeted lint/format checks pass
+  after this copy update.
+- Dialogs have a darker, lightly blurred backdrop, a border, and a stronger
+  shadow. Overlays and contents share a stacking level so a later nested dialog's
+  overlay also dims the management dialog underneath it, not just the app behind
+  management.
+- Dialogs restore focus to their opener on close. Regression checks cover
+  Cancel/Escape without an X and Escape returning from the item editor to the
+  management Add item control.
+- Verified: ESLint, full Prettier check, TypeScript/production build, 35 client
+  tests, and 20 isolated emulator tests pass. The live app returns HTTP 200 and
+  serves the updated editor. Visual backdrop/phone checks remain manual; the
+  existing large-chunk warning remains. No commit, push, or deployment.
+- After restoring the header/X: all 10 targeted editor/management tests,
+  targeted ESLint/Prettier checks, and TypeScript/production build pass.
+  Regression checks now cover X, Cancel, Escape, and the visible item heading.
+
+### System dark mode (2026-11-23 evening)
+
+- Added system-only dark mode using `prefers-color-scheme: dark`. No appearance
+  picker, saved preference, or additional JavaScript; the OS/browser preference
+  controls the theme and changes take effect automatically.
+- Shared dark color tokens cover the page, login, catalog/list, management,
+  dialogs, errors, completion states, and focus outlines. Separate foreground
+  tokens keep filled buttons/checkboxes readable; dialog backdrops remain dark
+  rather than becoming pale when the foreground text switches to light.
+- Light colors remain unchanged. Dark-mode form/checkbox borders have stronger
+  contrast than decorative row separators. Native controls use the matching
+  `color-scheme`, and browser theme-color metadata follows the system setting.
+- Verified: ESLint, full Prettier check, TypeScript/production build, and all 36
+  client tests pass. All 14 checked text/color pairs in each palette meet the
+  4.5:1 WCAG AA text threshold (minimum 4.91:1 light, 6.41:1 dark). These palette
+  checks are not a complete accessibility audit; visual system-theme switching
+  and phone/VoiceOver checks remain manual. Existing bundle warning remains.
+- No dependencies, commits, pushes, production resources, or deployments added.
+
+### Header font trial (2026-11-23 evening)
+
+- User approved trying Kalam Bold for "Fearless Buyer" and Kalam Regular for
+  "Your weekly haul, in order." Only the signed-in app header's text uses Kalam;
+  login, tabs, forms, dialogs, and other content keep Geist.
+- Added `@fontsource/kalam` to client dependencies and the workspace lockfile
+  using the pinned npm. Regular/Bold Latin subsets are bundled and served locally,
+  with font-display swap and Geist/sans-serif fallbacks. No Google Fonts CDN
+  request or global tooling installation is needed.
+- Verified: full ESLint/Prettier checks, TypeScript/production build, and both
+  targeted app tests pass. Build includes both Kalam weights, and their local
+  CSS endpoints return HTTP 200. Lockfile changes are limited to the added font.
+  Visual font sizing/phone checks remain manual; the existing bundle warning
+  remains. No commit, push, or deployment.
+- User reported the old font was still visible. Found that Vite's normal CSS
+  module retained the old transform after the Kalam import failed before the
+  package finished installing; the built CSS already contained Kalam. Restarted
+  only the client server, leaving emulators/household data untouched.
+- After restart, verified the actual live `/src/index.css` module includes both
+  Kalam weights, the display-font token, and the header's font-family rule.
+  Both font URLs referenced by that stylesheet return complete HTTP 200
+  downloads; Emulator UI also remains available. A page refresh loads the
+  corrected stylesheet.
+- Increased the signed-in header title from 20px to 30px and its tagline from
+  14px to 18px at the user's request. Header wrapping remains enabled for narrow
+  screens. Both app tests, targeted lint/format checks, and production build
+  pass after resizing.
+- Added a narrow-phone adjustment targeting the iPhone 13 mini's 375px portrait
+  viewport: below 390px, the title is 24px and tagline 16px; at 390px and above,
+  they retain 30px/18px. The basket icon does not shrink, and header actions can
+  wrap without being hidden. Both app tests, targeted lint/format checks, and
+  production build pass. Physical-device visual verification remains manual.
+- Subsequent feedback approved removing the basket logo from the signed-in
+  header and hiding its Add item shortcut below 390px. The title/tagline group
+  and management control now stay in one header row, replacing the earlier
+  action-wrapping approach. Larger screens retain the Add item shortcut.
+- Add item remains available through management on small screens. All three
+  app tests (including this alternative add flow), targeted lint/format checks,
+  and production build pass. Physical-device layout verification remains manual.
+
+### Previous stopping point (2026-11-23)
+
+- Committed and signature verified: `ccf8e2b fix: improve store management usability`.
+  Six local commits are on `main`; no remote, push, or deployment exists.
+- Latest checks pass: ESLint, Prettier, TypeScript/production build, 25 client
+  tests, and 20 emulator rules/service/concurrency tests. The existing
+  large-chunk build warning and 14 moderate dependency advisories remain open.
+- Dev server and emulators are stopped. Auth and Firestore were exported to
+  `.firebase/session-handoff-2026-11-23/` (ignored by Git); export files were
+  verified, but restoration and automatic persistence are not yet validated.
+- Next session: restore the snapshot, visually recheck the management fixes,
+  continue UX refinement, and finish the two-person/responsive/accessibility
+  checks. Then assess dependencies/bundle size and write the setup README.
+- `docs/list.md` remains untracked and untouched. This post-commit plan update
+  is intentionally uncommitted; another commit, push, or deployment requires
+  separate approval.
+
 | Workstream                        | Status                                       | Remaining before completion                                                                                                                                                                        |
 | --------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Workspace and runtime             | Complete                                     | Node 24.19.0, npm 11.19.0 configuration, dependencies, and initial tooling verified                                                                                                                |
@@ -55,7 +243,7 @@ resources, or deployments have been created.
 | Shared data services              | In progress: emulator concurrency tests pass | Manual browser verification of actual services and failure paths remains                                                                                                                           |
 | Catalog selection                 | In progress: written                         | Verify full selection animation and failed-save recovery in a browser                                                                                                                              |
 | Grocery List                      | In progress: written                         | Verify shared check/remove/reset flow in a browser                                                                                                                                                 |
-| Store management                  | In progress: written                         | Verify drag/keyboard ordering, section moves, and concurrent edits                                                                                                                                 |
+| Store management                  | In progress: fixes and regression tests pass | Visually recheck borders, Add/Delete controls, and reorder flicker; refine UX and verify drag/keyboard ordering, section moves, and concurrent edits                                               |
 | Integrated validation             | In progress                                  | Lint, build, 25 client tests, and 20 emulator tests pass after management fixes; Playwright removed; browser retesting, responsive/accessibility checks, and dependency advisory assessment remain |
 | Setup documentation               | Pending                                      | Local setup guide and separately authorized production provisioning instructions                                                                                                                   |
 
@@ -67,10 +255,10 @@ resources, or deployments have been created.
   Six local commits exist on `main` (see Commit handoff).
   No remote is configured and nothing has been pushed.
 - Scaffold, authentication components, catalog/list screens, store management,
-  Firestore services/rules, and initial tests are written. All 14 current emulator
+  Firestore services/rules, and tests are written. All 20 current emulator
   access/rules/concurrency tests pass after fixes; full end-to-end behavior is not
-  verified. Emulator concurrency tests exercise the shared update helper with
-  transactions; they are not a substitute for testing the actual browser service.
+  verified. Emulator tests cover the shared update helper and actual selection/
+  deletion services, including deletion races; they do not replace browser checks.
 - Matched Subaru's runtime configuration: `.nvmrc` is `24.19.0`, package engines
   are `24.x`, and packageManager is `npm@11.19.0`. Installed Node through existing
   nvm; no project-local Node dependency and no global CLI installs.
@@ -79,9 +267,9 @@ resources, or deployments have been created.
   pinned npm without changing global packages.
 - Refreshed the workspace lockfile using npm 11.19.0 and aligned the root Vite
   dependency with the client to resolve a build-time duplicate-version conflict.
-- Verified under Node 24.19.0 before the latest rules/service/browser-test edits:
-  TypeScript/production build, ESLint, and all 19 initial unit/component tests
-  passed. Build reports a large-chunk warning (813.78 kB JS, 247.15 kB gzip).
+- Latest verification under Node 24.19.0: TypeScript/production build, ESLint,
+  formatting, and all 25 client tests passed. Build reports a large-chunk warning
+  (813.67 kB JS, 247.18 kB gzip).
 - Installation reports 14 moderate dependency advisories; these still need
   assessment. Existing user npm configuration produces legacy always-auth
   warnings; the user's configuration was not modified.
@@ -90,10 +278,10 @@ resources, or deployments have been created.
   tests) passed afterward under Node 24.19.0. TypeScript/production build and
   emulator rules tests were rerun after formatting (2026-11-23): `npm run build`
   passed (same large-chunk warning) and `npm run test:rules` passed 14/14.
-- Remaining: manual two-person browser verification and
-  responsive/accessibility verification; local setup documentation;
-  persistent emulator-data handling; final validation. Do not equate passing
-  the initial tests with a verified working shared app.
+- Remaining: snapshot restoration, management UX refinement and visual retesting,
+  manual two-person browser and responsive/accessibility verification; local setup
+  documentation; automatic emulator persistence; final validation. Do not equate
+  passing tests with a verified working shared app.
 
 ### Browser testing: removed (matches Subaru)
 
@@ -111,7 +299,8 @@ resources, or deployments have been created.
 - Installs must go through Homebrew. The Homebrew `chromium` cask is disabled
   (fails Gatekeeper); `ungoogled-chromium` exists but was not installed. If
   browser automation returns, it needs a non-managed browser and user approval.
-- The two-person browser workflow is now verified manually, not by automation.
+- The two-person browser workflow must be verified manually, not by automation;
+  this verification is still incomplete.
 - Do not assume a dev server or persistent local household is currently running.
 - Resumed 2026-11-23: restarted `npm run dev` as a detached local process and
   verified HTTP readiness at http://127.0.0.1:5173 and
@@ -149,7 +338,7 @@ resources, or deployments have been created.
   household. With `npm run dev` already running, the rules suite was invoked using
   `npm exec -- vitest run --config vitest.emulator.config.ts` (under the pinned
   runtime/npm), not a second emulator process. The live household was preserved.
-- The running dev server hot-reloaded these changes and the emulator confirmed
+- Before shutdown, the dev server hot-reloaded these changes and the emulator confirmed
   the rules update. Visual border/layout and drag-flicker retesting, plus the full
   two-person workflow, remain manual checks. The user approved committing this
   session's changes at the stopping point. No push or deployment is authorized.
@@ -164,9 +353,11 @@ resources, or deployments have been created.
   and set `changedItemId`. Reset remains an atomic empty-list replacement.
 - Sections maintain an item count with catalog moves/creation in the same
   transaction, preventing removal of a populated section.
-- Latest `npm run test:rules`/rules phase of `npm run validate`: 14 passed,
+- Initial `npm run test:rules`/rules phase of `npm run validate`: 14 passed,
   including household isolation, invalid-write rejection, section integrity,
   concurrent edits, idempotent selection, listener synchronization, and reset.
+  The latest isolated emulator suite passes 20 tests, including the added
+  catalog-deletion access, integrity, actual-service, and concurrency cases.
 
 ### Commit handoff and authorization
 
@@ -187,7 +378,7 @@ resources, or deployments have been created.
   - `84355fe chore: remove Playwright browser tests`.
   - `e4be001 feat: simplify catalog and grocery list UI` — smoother selection exit,
     the UI simplifications below, the `setupLocal` TTY fix, and this plan.
-  - `fix: improve store management usability` — rounded borders, an explicit Add
+  - `ccf8e2b fix: improve store management usability` — rounded borders, an explicit Add
     grocery button, optimistic reorder presentation with failure recovery,
     confirmed transactional catalog deletion, focused UI/emulator regressions,
     and this session handoff. Authorized by the user at the stopping point.
@@ -203,7 +394,8 @@ resources, or deployments have been created.
 
 ### Remaining implementation order (resume only when requested)
 
-1. Done: build and `npm run test:rules` (14/14) pass after formatting.
+1. Done: lint, formatting, TypeScript/production build, 25 client tests, and
+   20 emulator tests pass. The management fixes are committed as `ccf8e2b`.
 2. Done: browser automation removed (see Browser testing). Next, manually
    verify the two-person workflow on two signed-in sessions against the local
    emulators: selection animation, check/remove/reset sync,
@@ -212,8 +404,9 @@ resources, or deployments have been created.
    http://127.0.0.1:5173, Emulator UI at http://127.0.0.1:4000) and
    `npm run setup:local` created the empty household and two local accounts
    (`buyer1@example.test`, `buyer2@example.test`; passwords printed by the
-   script only). Emulator data is not persisted; stopping `npm run dev` loses
-   it (the server was stopped at the end of the session). Fixed:
+   script only). The initial session had no export; the latest stopping point
+   saved Auth/Firestore to `.firebase/session-handoff-2026-11-23/` before stopping
+   the server. Automatic persistence remains pending. Fixed:
    `scripts/setupLocal.ts` only waits for Enter in an
    interactive terminal, so non-interactive runs no longer report a false
    "Local setup failed" after successful setup.
@@ -238,9 +431,13 @@ resources, or deployments have been created.
    dropped its heading; progress and New list moved to a footer below the items.
    Quantity controls were removed from the UI and deferred to v2 after trying a
    modal, an inline stepper, and a tap-to-open chip; all felt clunky.
-   Remaining: finish the two-person check (sync between two sessions, reset,
-   management ordering, phone layout, offline) after `npm run dev` and
-   `npm run setup:local`.
+   Next: restore the saved snapshot using
+   `npm run emulators -- --import=.firebase/session-handoff-2026-11-23` and run
+   `npm run dev:client` separately. Verify restoration before changing data;
+   `setup:local` is unnecessary for a successfully restored household.
+   Recheck the management borders, Add/Delete controls, and reorder behavior,
+   then finish the two-person check (sync, reset, ordering, phone layout, offline)
+   and broader UX refinement.
 3. Assess the 14 moderate dependency advisories and the large-chunk build warning.
 4. Document local startup, account setup, and emulator persistence; then propose
    the approved `docs: document local setup and development` commit.
