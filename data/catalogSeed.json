@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "name": "1",
+      "items": [
+        "Carrots",
+        "Fake Sausage",
+        "Tofu",
+        "Cucumber",
+        "Edamame",
+        "Apples",
+        "Vegan Pesto",
+        "Green Goddess Dressing",
+        "Organic Kale",
+        "Radish",
+        "Pickles",
+        "Tahini",
+        "Bell Pepper",
+        "Banana"
+      ]
+    },
+    {
+      "name": "2",
+      "items": [
+        "Tissues",
+        "Organic Rolled Oats & Ancient Grains",
+        "Flax Seed",
+        "Boxed Bars Protein",
+        "Boxed Bars Peanut Butter",
+        "Loose Protein Bars",
+        "Coffee Beans"
+      ]
+    },
+    {
+      "name": "3",
+      "items": [
+        "Green Salsa",
+        "Red Salsa",
+        "Tortilla Chips Quinoa",
+        "Tortilla Chips Blue Corn",
+        "Avocados",
+        "Inner Peas",
+        "Tempeh Chips",
+        "Everything Mix",
+        "Pineapple Nut Mix",
+        "Pecans",
+        "Sliced Almonds Untoasted",
+        "Walnuts",
+        "Go Trek Mix",
+        "Prunes",
+        "Lemon"
+      ]
+    },
+    {
+      "name": "4",
+      "items": [
+        "Olives",
+        "Squiggle Noodles",
+        "Frozen Broccoli",
+        "Pasta Sauce",
+        "Pasta Noodles",
+        "Chick Peas",
+        "Black Beans",
+        "White Beans",
+        "Vegetable Broth",
+        "Honey",
+        "Peanut butter",
+        "Frozen Raspberry",
+        "Frozen Blueberry",
+        "Frozen Açaí Bowl",
+        "Waffles",
+        "Ice Cream Sandwich",
+        "Cones"
+      ]
+    },
+    {
+      "name": "5",
+      "items": [
+        "Lentil Soup Ancient Grains",
+        "Yogurt",
+        "Seltzer",
+        "Kale Bowl",
+        "Tart",
+        "Turmeric juice",
+        "Ravioli"
+      ]
+    },
+    {
+      "name": "6",
+      "items": ["Big Greek Yogurt", "Little Greek Yogurt", "Half and Half"]
+    },
+    {
+      "name": "7",
+      "items": [
+        "Frozen Brown Pizza",
+        "Medley Rice",
+        "Spanish Rice",
+        "Quinoa Burgers",
+        "Impossible Nuggets",
+        "Lunch Dessert"
+      ]
+    }
+  ]
+}

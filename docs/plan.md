@@ -48,6 +48,73 @@ resources, or deployments have been created.
 
 ## Implementation progress
 
+### End-of-day catalog seed checkpoint (2026-11-23, 22:16)
+
+- User authorized committing the catalog as a safe seed file:
+  `data/catalogSeed.json`. It contains version 1, seven named sections, and
+  69 ordered item names. Strict schema validation and comparison against the live
+  catalog verified every name and ordering. It contains no Auth accounts,
+  passwords, Firebase/household IDs, timestamps, or current-list selections.
+- Section order is the `sections` array order; item order is each section's
+  `items` array order. The seed is not automatically imported by `setup:local`
+  and is not bundled into the app. A future explicit local/production import can
+  use it without copying emulator credentials or overwriting household membership.
+- The authorized local commit includes only the seed and this handoff; find it
+  with `git log -1 --show-signature`. The preceding UX commit in current Git
+  history is `56da4c6`. Repo-local identity/signing was verified; global config
+  was not changed. `docs/list.md` stays untracked and untouched. No push,
+  production provisioning, or deployment is authorized.
+- Final local Auth/Firestore snapshot:
+  `.firebase/session-handoff-2026-11-23-2216/` (Git-ignored). Verified both Auth
+  accounts, Firestore export metadata/files, and all 69 seed item names in the
+  exported data before shutdown. Older snapshots are preserved.
+- App and emulators are stopped; their listener ports were checked. Next session:
+  restore this latest snapshot with
+  `npm run emulators -- --import=.firebase/session-handoff-2026-11-23-2216`,
+  then run `npm run dev:client` under the pinned runtime/npm. Do not run
+  `setup:local` for a successfully restored household. Restoration of this final
+  snapshot remains to be checked.
+- Application code is unchanged by the seed commit. Last full code checks passed:
+  lint, formatting, production build, 37 client tests, and 20 emulator tests.
+  Seed validation/formatting is verified separately. Automatic emulator
+  persistence, seed import/migration tooling, README, dependency/bundle assessment,
+  and full two-person/phone/accessibility verification remain unfinished.
+
+### Earlier local data snapshot (2026-11-23, 22:12)
+
+- Added 55 items in a single local transaction: section "2" has 7, "3" has 15,
+  "4" has 17 (both supplied lists combined in order), "5" has 7, "6" has 3,
+  and "7" has 6. No existing names needed skipping. Verified item records,
+  within-section order, and section counts. Section "1" and the current shopping
+  list were unchanged; the catalog now contains 69 items.
+- Exported Auth/Firestore to the ignored
+  `.firebase/catalog-import-2026-11-23-2212/` snapshot. This was the latest local
+  snapshot at that checkpoint; older exports are preserved. Resume with
+  `npm run emulators -- --import=.firebase/catalog-import-2026-11-23-2212`
+  and `npm run dev:client` under the pinned runtime/npm.
+- App/emulators remain running. Export again before shutdown if data changes;
+  automatic persistence is still not configured. No application code or
+  production data changed. `docs/list.md` remains untouched; these handoff
+  updates are uncommitted and no additional commit/push/deployment is authorized.
+
+### Earlier section 1 snapshot (2026-11-23, 22:06)
+
+- Added the user's 14 items to existing section "1" in the supplied order in a
+  single local Firestore transaction. Verified item records, section count, and
+  ordering; the current shopping list was unchanged. No application code or
+  production data was changed.
+- Exported Auth/Firestore to the ignored
+  `.firebase/catalog-import-2026-11-23-2206/` snapshot. This is newer than the
+  earlier session-handoff snapshot and includes the user's current sections and
+  catalog. Resume with
+  `npm run emulators -- --import=.firebase/catalog-import-2026-11-23-2206`
+  and `npm run dev:client` under the pinned runtime/npm. Do not run `setup:local`
+  for a successfully restored household.
+- App and emulators remain running. Automatic persistence is still not enabled;
+  export again before shutdown if data changes after this snapshot. The previous
+  snapshot is preserved. `docs/list.md` remains untouched; this handoff update is
+  uncommitted and no additional commit/push/deployment is authorized.
+
 ### Commit checkpoint (2026-11-23 evening)
 
 - User authorized one local commit for the accumulated UX changes:
