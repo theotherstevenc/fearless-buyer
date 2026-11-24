@@ -11,8 +11,8 @@
     "client"
   ],
   "scripts": {
-    "dev": "concurrently -k -n firebase,client \"npm run emulators\" \"npm run dev -w client\"",
-    "emulators": "firebase emulators:start --only auth,firestore,hosting --project demo-fearless-buyer",
+    "dev": "firebase emulators:exec --only auth,firestore,hosting --project demo-fearless-buyer --import=.firebase/emulator-data --export-on-exit --ui \"npm run dev -w client\"",
+    "emulators": "firebase emulators:start --only auth,firestore,hosting --project demo-fearless-buyer --import=.firebase/emulator-data --export-on-exit",
     "dev:client": "npm run dev -w client",
     "build": "npm run build -w client",
     "lint": "eslint .",
@@ -27,7 +27,6 @@
     "@eslint/js": "^9.39.0",
     "@firebase/rules-unit-testing": "^6.0.0",
     "@types/node": "^24.13.3",
-    "concurrently": "^9.2.0",
     "eslint": "^9.39.0",
     "eslint-config-prettier": "^10.1.0",
     "eslint-plugin-react-hooks": "^5.2.0",
