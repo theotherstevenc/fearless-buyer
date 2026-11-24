@@ -12,8 +12,6 @@ dist/
 .firebase/
 *.log
 coverage/
-playwright-report/
-test-results/
 .DS_Store
 .idea/
 *.swp

@@ -42,29 +42,29 @@ At initial planning there was no grocery codebase. The inspected reference proje
   caches, charts, and data imports are not needed here.
 
 The new app workspace has been created and its dependencies installed locally.
-No reference repository files were changed. Two approved, signed local commits
+No reference repository files were changed. Three approved, signed local commits
 exist on `main` (see Commit handoff). No remote, pushes, production Firebase
 resources, or deployments have been created.
 
 ## Implementation progress
 
-| Workstream                        | Status                                       | Remaining before completion                                                                                                                                                                                |
-| --------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Workspace and runtime             | Complete                                     | Node 24.19.0, npm 11.19.0 configuration, dependencies, and initial tooling verified                                                                                                                        |
-| Firebase model and authentication | In progress: emulator rules tests pass       | Finish browser login/access verification and revalidate final implementation                                                                                                                               |
-| Shared data services              | In progress: emulator concurrency tests pass | Browser tests of actual services and failure paths remain incomplete                                                                                                                                       |
-| Catalog selection                 | In progress: written                         | Verify full selection animation, Undo, and failed-save recovery in a browser                                                                                                                               |
-| Grocery List                      | In progress: written                         | Verify shared quantity/check/remove/reset flow in a browser                                                                                                                                                |
-| Store management                  | In progress: written                         | Verify drag/keyboard ordering, section moves, and concurrent edits                                                                                                                                         |
-| Integrated validation             | In progress                                  | Formatting applied; lint and 19 unit tests pass after formatting; both browser tests fail; rerun build and emulator rules tests; responsive/accessibility checks and dependency advisory assessment remain |
-| Setup documentation               | Pending                                      | Local setup guide and separately authorized production provisioning instructions                                                                                                                           |
+| Workstream                        | Status                                       | Remaining before completion                                                                                                                                                                      |
+| --------------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Workspace and runtime             | Complete                                     | Node 24.19.0, npm 11.19.0 configuration, dependencies, and initial tooling verified                                                                                                              |
+| Firebase model and authentication | In progress: emulator rules tests pass       | Finish browser login/access verification and revalidate final implementation                                                                                                                     |
+| Shared data services              | In progress: emulator concurrency tests pass | Manual browser verification of actual services and failure paths remains                                                                                                                         |
+| Catalog selection                 | In progress: written                         | Verify full selection animation, Undo, and failed-save recovery in a browser                                                                                                                     |
+| Grocery List                      | In progress: written                         | Verify shared quantity/check/remove/reset flow in a browser                                                                                                                                      |
+| Store management                  | In progress: written                         | Verify drag/keyboard ordering, section moves, and concurrent edits                                                                                                                               |
+| Integrated validation             | In progress                                  | Formatting applied; lint, 19 unit tests, build, and 14 emulator rules tests pass after formatting; Playwright removed; responsive/accessibility checks and dependency advisory assessment remain |
+| Setup documentation               | Pending                                      | Local setup guide and separately authorized production provisioning instructions                                                                                                                 |
 
 - Git initialized at the user's request with an empty `main` branch.
   `.gitignore` excludes dependencies, build output, TypeScript build metadata,
   local environment/secrets, emulator state, logs, and test artifacts while
   retaining `.env.example` and explicitly retaining `.nvmrc` despite a global
   ignore rule. `.gitattributes` normalizes source/config text line endings.
-  Two local commits exist on `main`; the working tree was clean afterward.
+  Three local commits exist on `main`; the working tree was clean afterward.
   No remote is configured and nothing has been pushed.
 - Scaffold, authentication components, catalog/list screens, store management,
   Firestore services/rules, and initial tests are written. All 14 current emulator
@@ -81,43 +81,38 @@ resources, or deployments have been created.
   dependency with the client to resolve a build-time duplicate-version conflict.
 - Verified under Node 24.19.0 before the latest rules/service/browser-test edits:
   TypeScript/production build, ESLint, and all 19 initial unit/component tests
-  passed. Rerun these after the latest edits. Build reports a large-chunk warning.
+  passed. Build reports a large-chunk warning (813.78 kB JS, 247.15 kB gzip).
 - Installation reports 14 moderate dependency advisories; these still need
   assessment. Existing user npm configuration produces legacy always-auth
   warnings; the user's configuration was not modified.
 - Formatting: `npm run format` (project-local Prettier) rewrote 24 files before
   the commits; `npm run format:check`, `npm run lint`, and `npm test` (19 unit
   tests) passed afterward under Node 24.19.0. TypeScript/production build and
-  emulator rules tests were NOT rerun after formatting; rerun them next.
-- Remaining: browser test troubleshooting and
+  emulator rules tests were rerun after formatting (2026-11-23): `npm run build`
+  passed (same large-chunk warning) and `npm run test:rules` passed 14/14.
+- Remaining: manual two-person browser verification and
   responsive/accessibility verification; local setup documentation;
   persistent emulator-data handling; final validation. Do not equate passing
   the initial tests with a verified working shared app.
 
-### Browser testing handoff: paused, not resolved
+### Browser testing: removed (matches Subaru)
 
-- Installed project-local `@playwright/test`, `playwright`, and `playwright-core`
-  version 1.65.1. No global browser-testing CLI was installed.
-- Added `playwright.config.ts`, `e2e/shopping.spec.ts`, and root test scripts.
-  The configuration currently uses `channel: 'chrome'`, with desktop and
-  iPhone-sized Chromium projects, and starts a temporary Vite server.
-- Tests used existing Google Chrome. No Chromium browser was downloaded:
-  the attempted `npm exec -- playwright install chromium` command was rejected
-  by the user and did not execute.
-- Both browser tests failed. Browser process diagnostics reported SIGKILL.
-  The first inspected trace was interrupted while waiting for the quantity
-  badge after saving a quantity. Context-close errors in cleanup obscure the
-  primary interruption; do not claim a confirmed app defect or browser root cause.
-- Playwright-managed Chromium generally offers more repeatable automation because
-  its browser version is matched to Playwright, rather than the system Chrome
-  version and environment. Existing Chrome is still supported. Chromium might
-  help here, but it is NOT a verified fix for the termination.
-- Installing Chromium is neither necessary for Git initialization nor a commit.
-  Do not retry its installation without renewed user approval.
-- Failed runs generated ignored reports/traces in `test-results/` and emulator
-  debug logs. No screenshots/traces were committed or uploaded.
-- The temporary test servers/emulators were stopped by their test runners.
-  Do not assume a dev server or persistent local household is currently running.
+- Playwright e2e tests were removed at the user's request (2026-11-23) to match
+  Subaru, which has no browser-automation tests. Removed `@playwright/test`
+  (and transitive `playwright`/`playwright-core`) from devDependencies and the
+  lockfile, `playwright.config.ts`, `e2e/`, the `test:integration` script, and
+  the Playwright `.gitignore` entries. `npm run validate` now runs lint, format
+  check, build, unit tests, and `npm run test:rules`; it passes.
+- Root cause of the earlier failures: managed Google Chrome (and Homebrew
+  Chrome Canary) log "DevTools remote debugging is disallowed by the system
+  admin" ~5-10 s after launch and drop the automation connection. Not an app
+  defect: before removal, both e2e tests (desktop, phone) passed using a
+  pre-existing cached Chromium left by another project.
+- Installs must go through Homebrew. The Homebrew `chromium` cask is disabled
+  (fails Gatekeeper); `ungoogled-chromium` exists but was not installed. If
+  browser automation returns, it needs a non-managed browser and user approval.
+- The two-person browser workflow is now verified manually, not by automation.
+- Do not assume a dev server or persistent local household is currently running.
 
 ### Rules and concurrency fixes made during pre-commit validation
 
@@ -129,7 +124,7 @@ resources, or deployments have been created.
   and set `changedItemId`. Reset remains an atomic empty-list replacement.
 - Sections maintain an item count with catalog moves/creation in the same
   transaction, preventing removal of a populated section.
-- Latest `npm run test:rules`/rules phase of `npm run test:integration`: 14 passed,
+- Latest `npm run test:rules`/rules phase of `npm run validate`: 14 passed,
   including household isolation, invalid-write rejection, section integrity,
   concurrent edits, idempotent selection, listener synchronization, and reset.
 
@@ -141,13 +136,14 @@ resources, or deployments have been created.
 - User explicitly accepted committing with failing browser tests (documented in
   the feat commit body) after formatting was applied first.
 - Made (GPG-signed, "Good signature", Copilot co-author trailer included):
-  - `9578517 chore: scaffold Fearless Buyer workspace` — 17 config/tooling
+  - `5010c67 chore: scaffold Fearless Buyer workspace` — 17 config/tooling
     files: root dotfiles, package/lock files, ESLint, Firebase and emulator
     Vitest config, client config, and `client/.env.example` (demo values only).
     Configuration only; not a runnable app on its own.
-  - `ee3ad81 feat: add private shared grocery workflow` — 31 files:
+  - `f5b260e feat: add private shared grocery workflow` — 31 files:
     `client/src/**`, `firestore.rules`, `tests/`, `e2e/`,
     `playwright.config.ts`, and `scripts/`. Body records the known e2e failure.
+  - `1b950c0 docs: add implementation plan and handoff` — `docs/plan.md`.
 - Staged diffs were inspected before each commit: no real secrets (password hits
   are runtime-generated or fixtures); lockfile resolves only from
   `registry.npmjs.org`; no internal registry references.
@@ -160,14 +156,11 @@ resources, or deployments have been created.
 
 ### Remaining implementation order (resume only when requested)
 
-1. Rerun the TypeScript/production build and `npm run test:rules` to confirm the
-   formatting pass changed no behavior.
-2. Investigate browser termination: recommended first step is rerunning e2e
-   with a single worker and tracing on existing Chrome to separate a browser
-   crash from an app defect (e.g., the quantity badge never appearing).
-   Chromium is an experiment, not a verified fix, and needs renewed approval.
-   Then verify the full two-person workflow, animations, failure states,
-   responsive layout, and accessible ordering.
+1. Done: build and `npm run test:rules` (14/14) pass after formatting.
+2. Done: browser automation removed (see Browser testing). Next, manually
+   verify the two-person workflow on two signed-in sessions against the local
+   emulators: selection animation and Undo, quantity/check/remove/reset sync,
+   failure states, responsive layout, and accessible ordering.
 3. Assess the 14 moderate dependency advisories and the large-chunk build warning.
 4. Document local startup, account setup, and emulator persistence; then propose
    the approved `docs: document local setup and development` commit.
