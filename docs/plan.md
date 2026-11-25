@@ -50,8 +50,10 @@ resources, or deployments have been created.
 
 ### Jump in next time (updated 2026-11-24)
 
-**Starting state:** the user considers the app v1-ready. Latest signed commits
-are the 2026-11-24 theme/UI commit (find it with `git log -1`) and
+**Starting state:** the user considers the app v1-ready. Local app/emulators are
+stopped and data was exported cleanly. Latest signed local commits (2026-11-24):
+`199fe6a chore: add opt-in LAN dev mode for device testing`,
+`70cc15c feat: apply warm grocer theme and polish management UI`, and
 `77d7490 chore: persist local emulator data across restarts`. The safe seed has
 seven sections and 69 items. `docs/list.md` is untracked and must remain
 untouched unless requested. Any further commit or push needs separate approval.
@@ -68,7 +70,10 @@ npm exec --yes --package=npm@11.19.0 -- npm run dev
 ```
 
 App: http://127.0.0.1:5173. Emulator UI: http://127.0.0.1:4000.
-Use the existing local credentials; passwords are not recorded here.
+Use the existing local credentials (`buyer1@example.test`, `buyer2@example.test`);
+passwords were regenerated on 2026-11-24 and are not recorded here. If lost,
+reset them with the Admin SDK against the running Auth emulator or via the
+Emulator UI.
 Stop with **one** Ctrl-C and wait for "Export complete"; a second Ctrl-C forces
 exit and skips the export. A crash or force-kill also loses changes since the
 last start. `npm run emulators` plus `npm run dev:client` in two terminals still
@@ -119,10 +124,11 @@ UI and theme changes (2026-11-24, from the user's manual review):
 Next priorities:
 
 1. Done: restored household verified and automatic local persistence configured.
-2. Still open before calling v1 verified: manual two-person workflow, offline
-   errors, long-press/keyboard reordering, system dark-mode switching, and
-   VoiceOver checks. The user reviewed the layout on small screens and requested
-   the UI changes above. Browser automation remains removed by user request.
+2. The user reviewed small-screen layout, then tested on a real iPhone via
+   `npm run dev:lan` and reported it fine (2026-11-24). Not individually
+   confirmed: two-person sync, offline errors, long-press/keyboard reordering,
+   live dark-mode switching, and VoiceOver. Browser automation remains removed
+   by user request.
 3. Assess the existing bundle-size warning and outstanding dependency advisory
    status; do not treat the scoped font installation's audit as a full assessment.
 4. Write the setup README. Add explicit seed import/migration tooling when
