@@ -76,6 +76,15 @@ works the same way. **Do not run `setup:local`** while the persisted household
 exists. To restore an older snapshot, stop the emulators and replace
 `.firebase/emulator-data/` with a copy of that snapshot directory.
 
+**Testing on a real phone (opt-in):** `npm run dev:lan` uses `firebase.lan.json`
+to bind the Auth/Firestore emulators and Vite to `0.0.0.0`, sharing the same
+persisted data. The Emulator UI and hub stay on `127.0.0.1`. Open
+`http://<Mac LAN IP>:5173` on a phone on the same Wi-Fi; the client connects to
+the emulators at the page's hostname. Use it only on a trusted home network:
+the emulators have no access control, so anyone on the network can read or wipe
+local data. The macOS firewall currently permits the nvm Node 24 and Homebrew
+OpenJDK 21 binaries.
+
 Restore verified 2026-11-24: both accounts and household membership, sections
 "1"–"7" in order with counts 14/7/15/17/7/3/6, contiguous item `sortOrder`,
 matching `itemCount`/`lastItemId`, and section/item names and order identical to

@@ -14,6 +14,7 @@
     "dev": "firebase emulators:exec --only auth,firestore,hosting --project demo-fearless-buyer --import=.firebase/emulator-data --export-on-exit --ui \"npm run dev -w client\"",
     "emulators": "firebase emulators:start --only auth,firestore,hosting --project demo-fearless-buyer --import=.firebase/emulator-data --export-on-exit",
     "dev:client": "npm run dev -w client",
+    "dev:lan": "firebase emulators:exec --config firebase.lan.json --only auth,firestore --project demo-fearless-buyer --import=.firebase/emulator-data --export-on-exit --ui \"npm run dev:lan -w client\"",
     "build": "npm run build -w client",
     "lint": "eslint .",
     "format": "prettier --write .",
