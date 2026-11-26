@@ -42,11 +42,126 @@ At initial planning there was no grocery codebase. The inspected reference proje
   caches, charts, and data imports are not needed here.
 
 The new app workspace has been created and its dependencies installed locally.
-No reference repository files were changed. Approved, signed local commits
-exist on `main` (see Commit handoff). No remote, pushes, production Firebase
-resources, or deployments have been created.
+No reference repository files were changed. Approved, signed commits are on
+`main` at `origin` (github.com/theotherstevenc/fearless-buyer, public). No
+production Firebase resources or deployments have been created.
 
 ## Implementation progress
+
+### Jump in next time (updated 2026-11-25)
+
+**Starting state:** the user considers the app v1-ready. Local app/emulators are
+stopped and data was exported cleanly. On 2026-11-25 the branch
+`chore-assess-bundle-and-advisories` was pushed and merged into `main` on GitHub
+via pull request. It carried the previously unpushed local `main` commits
+(`35d3b45` emulator persistence, `77529de` warm grocer theme, `20c4676` LAN dev
+mode, `b7b0908` handoff refresh) plus vendor chunk splitting and the `re2`
+patch, the setup README, and this handoff refresh. Start by checking out `main`
+and pulling. The safe seed has seven sections and 69 items. `docs/list.md` is
+untracked and must remain untouched unless requested. Any further commit, merge,
+or push needs separate approval.
+
+**Local data now persists automatically.** `npm run dev` and `npm run emulators`
+import from and export on exit to `.firebase/emulator-data/` (Git-ignored). It
+was seeded from `.firebase/session-handoff-2026-11-23-2216/`, which is kept as a
+fallback. Start everything in one terminal from the repository root:
+
+```bash
+source "$HOME/.nvm/nvm.sh"
+nvm use
+npm exec --yes --package=npm@11.19.0 -- npm run dev
+```
+
+App: http://127.0.0.1:5173. Emulator UI: http://127.0.0.1:4000.
+Use the existing local credentials (`buyer1@example.test`, `buyer2@example.test`);
+passwords were regenerated on 2026-11-24 and are not recorded here. If lost,
+reset them with the Admin SDK against the running Auth emulator or via the
+Emulator UI.
+Stop with **one** Ctrl-C and wait for "Export complete"; a second Ctrl-C forces
+exit and skips the export. A crash or force-kill also loses changes since the
+last start. `npm run emulators` plus `npm run dev:client` in two terminals still
+works the same way. **Do not run `setup:local`** while the persisted household
+exists. To restore an older snapshot, stop the emulators and replace
+`.firebase/emulator-data/` with a copy of that snapshot directory.
+
+**Testing on a real phone (opt-in):** `npm run dev:lan` uses `firebase.lan.json`
+to bind the Auth/Firestore emulators and Vite to `0.0.0.0`, sharing the same
+persisted data. The Emulator UI and hub stay on `127.0.0.1`. Open
+`http://<Mac LAN IP>:5173` on a phone on the same Wi-Fi; the client connects to
+the emulators at the page's hostname. Use it only on a trusted home network:
+the emulators have no access control, so anyone on the network can read or wipe
+local data. The macOS firewall currently permits the nvm Node 24 and Homebrew
+OpenJDK 21 binaries.
+
+Restore verified 2026-11-24: both accounts and household membership, sections
+"1"–"7" in order with counts 14/7/15/17/7/3/6, contiguous item `sortOrder`,
+matching `itemCount`/`lastItemId`, and section/item names and order identical to
+`data/catalogSeed.json`. The current list was empty and the ordering revision
+was 46.
+
+Persistence change (2026-11-24): `dev` now uses `firebase emulators:exec` with the
+client as its script instead of `concurrently`, which was removed. concurrently's
+tree-kill signalled the Firestore Java process and sent Firebase a second
+signal, so exports were skipped. Verified with a temporary marker document (since
+deleted) that data survives restarts after `npm run emulators` + SIGINT,
+`npm run dev` + Ctrl-C, and `npm run dev` when the client exits first.
+`test:rules` still uses fresh, non-persisted emulators.
+
+UI and theme changes (2026-11-24, from the user's manual review):
+
+- Trader Joe's–inspired warm grocer palette for light and dark modes (red
+  primary/header, parchment background, cream surfaces, brown text) plus
+  matching `theme-color` meta tags. All text pairs were checked against WCAG AA
+  4.5:1 and control borders against 3:1. Light-mode `control-border` is now
+  darker than `border`. Danger is maroon/salmon and close in hue to primary; the
+  user accepted this for now.
+- Catalog/Grocery List tab buttons gained horizontal padding.
+- Management rows: below a 21rem list width (container query on `.manage-rows`),
+  actions move to a full-width soft-background band; hover there is
+  `bg-surface/50`.
+- Modals use a 2px border. A fixed header with a separately scrolling body was
+  tried and rejected because it used too much screen space.
+- The store manager modal no longer shows a description; reordering guidance
+  remains in the controls' accessible labels.
+
+Next priorities:
+
+1. Done: restored household verified and automatic local persistence configured.
+2. The user reviewed small-screen layout, then tested on a real iPhone via
+   `npm run dev:lan` and reported it fine (2026-11-24). Not individually
+   confirmed: two-person sync, offline errors, long-press/keyboard reordering,
+   live dark-mode switching, and VoiceOver. Browser automation remains removed
+   by user request.
+3. Done 2026-11-25 (`5b0a3af`).
+   - Bundle: a production build without `VITE_FIREBASE_*` env hits the config
+     `throw` in `lib/firebase.ts`, so the app is tree-shaken away and sizes are
+     misleading. With placeholder env the single chunk was 1,005 kB (306 kB gzip).
+     Firestore is ~490 kB of that and must stay the full SDK (`onSnapshot`).
+     Vite now splits `firestore`, `firebase`, `react`, and `vendor` chunks; the
+     app chunk is ~29 kB, every chunk is under 500 kB, and the warning is gone.
+     Total download is unchanged; vendor chunks stay cached across app deploys.
+   - Advisories: `npm audit --omit=dev` reports 0. `npm audit fix` (non-breaking)
+     updated `re2` 1.24.1 → 1.27.2 (via `firebase-tools` → `superstatic`); the
+     Hosting emulator was smoke-tested. The remaining 13 moderate advisories are
+     dev-only, inside `firebase-tools`/`firebase-admin` (glob, minimatch, uuid,
+     `@opentelemetry/core`); npm's `--force` fix downgrades `firebase-tools` to
+     13.x, so they are accepted until upstream releases fixes.
+4. Done 2026-11-25 (`5645d5e`): `README.md` covers local setup, development,
+   persistence, phone testing, validation, configuration, and a deployment
+   outline (not yet deployed). Add explicit seed import/migration tooling when
+   requested; the committed seed is not automatically loaded or deployed.
+5. Next, as the user chooses: the manual checks listed in item 2, seed import
+   tooling, or production provisioning. Deployment is on hold by user request
+   (2026-11-25); its first piece is a production account/household setup script
+   (`scripts/setupLocal.ts` targets only the emulators).
+
+Latest full application validation passed: ESLint, Prettier, TypeScript/build,
+37 client tests, and 20 emulator tests. The seed separately passed strict schema,
+count/order, and live-catalog comparison checks. While emulators are already
+running, use `./node_modules/.bin/vitest run --config vitest.emulator.config.ts`
+for rules tests; do not start a second emulator or target the live
+household. Production provisioning and deployment are not authorized; each push
+or merge needs separate approval.
 
 ### End-of-day catalog seed checkpoint (2026-11-23, 22:16)
 
@@ -59,8 +174,8 @@ resources, or deployments have been created.
   `items` array order. The seed is not automatically imported by `setup:local`
   and is not bundled into the app. A future explicit local/production import can
   use it without copying emulator credentials or overwriting household membership.
-- The authorized local commit includes only the seed and this handoff; find it
-  with `git log -1 --show-signature`. The preceding UX commit in current Git
+- Committed as `7eceb76 chore: version household catalog seed`; the seed and
+  handoff were its only files, and the signature was verified. The preceding UX commit in current Git
   history is `56da4c6`. Repo-local identity/signing was verified; global config
   was not changed. `docs/list.md` stays untracked and untouched. No push,
   production provisioning, or deployment is authorized.

@@ -6,24 +6,24 @@
 @theme {
   --font-sans: 'Geist Variable', sans-serif;
   --font-display: 'Kalam', 'Geist Variable', sans-serif;
-  --color-primary: #274963;
-  --color-primary-hover: #19384e;
+  --color-primary: #b0122c;
+  --color-primary-hover: #8f0e23;
   --color-on-primary: #ffffff;
-  --color-brand-surface: #274963;
-  --color-on-brand: #ffffff;
-  --color-background: #f5f7fa;
-  --color-surface: #ffffff;
-  --color-foreground: #1d2d3a;
-  --color-muted: #586b79;
-  --color-border: #dce3e9;
-  --color-control-border: #dce3e9;
-  --color-soft: #edf2f6;
-  --color-danger: #a22d35;
-  --color-danger-soft: #fff0f1;
+  --color-brand-surface: #b0122c;
+  --color-on-brand: #fff8ec;
+  --color-background: #f8f1e3;
+  --color-surface: #fffbf3;
+  --color-foreground: #2b211c;
+  --color-muted: #6b5a4e;
+  --color-border: #e3d5bd;
+  --color-control-border: #a08c76;
+  --color-soft: #f1e6d2;
+  --color-danger: #7f1d1d;
+  --color-danger-soft: #f9e7e1;
   --color-on-danger: #ffffff;
-  --color-success: #255f47;
+  --color-success: #2f6b3a;
   --color-on-success: #ffffff;
-  --color-overlay: #1d2d3a;
+  --color-overlay: #2b211c;
 }
 
 @layer base {
@@ -33,23 +33,23 @@
   @media (prefers-color-scheme: dark) {
     :root {
       color-scheme: dark;
-      --color-primary: #a9cee7;
-      --color-primary-hover: #c4dff0;
-      --color-on-primary: #102332;
-      --color-brand-surface: #1a354a;
-      --color-on-brand: #e7edf3;
-      --color-background: #101820;
-      --color-surface: #18232e;
-      --color-foreground: #e7edf3;
-      --color-muted: #a9b7c5;
-      --color-border: #3e5264;
-      --color-control-border: #73899e;
-      --color-soft: #233240;
-      --color-danger: #ffb1b6;
-      --color-danger-soft: #392229;
-      --color-on-danger: #431218;
-      --color-success: #92d0ac;
-      --color-on-success: #103322;
+      --color-primary: #f4a3a3;
+      --color-primary-hover: #f8bcbc;
+      --color-on-primary: #3a0d12;
+      --color-brand-surface: #7a1222;
+      --color-on-brand: #fff1e6;
+      --color-background: #1c1613;
+      --color-surface: #261e1a;
+      --color-foreground: #f3e9dc;
+      --color-muted: #c9b8a8;
+      --color-border: #4a3b32;
+      --color-control-border: #8a7564;
+      --color-soft: #33281f;
+      --color-danger: #ffb4a8;
+      --color-danger-soft: #3d2220;
+      --color-on-danger: #4a1210;
+      --color-success: #9fd4a6;
+      --color-on-success: #12331a;
       --color-overlay: #000000;
     }
   }
@@ -110,7 +110,7 @@
     @apply grid grid-cols-2 gap-1 rounded-xl bg-soft p-1 mb-6;
   }
   .tab-button {
-    @apply min-h-12 rounded-lg font-medium text-muted flex items-center justify-center gap-2;
+    @apply min-h-12 rounded-lg px-4 py-2 font-medium text-muted flex items-center justify-center gap-2;
   }
   .tab-button[data-state='active'] {
     @apply bg-surface text-primary shadow-sm;
@@ -208,10 +208,11 @@
     @apply fixed inset-0 z-50 bg-overlay/55 backdrop-blur-[2px];
   }
   .modal-content {
-    @apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border border-border bg-surface p-5 shadow-2xl sm:p-6;
+    @apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border-2 border-border bg-surface p-5 shadow-2xl sm:p-6;
   }
   .manage-rows {
     @apply list-none p-0 m-0 rounded-lg border border-border bg-surface;
+    container-type: inline-size;
   }
   .manage-row {
     @apply flex flex-wrap items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1 first:rounded-t-lg last:rounded-b-lg;
@@ -235,6 +236,15 @@
   }
   .manage-row-actions {
     @apply flex shrink-0 ml-auto;
+  }
+  /* Below this width the handle, label, and four actions no longer fit on one line. */
+  @container (width < 21rem) {
+    .manage-row-actions {
+      @apply basis-full justify-end rounded-md bg-soft;
+    }
+    .manage-row-actions .icon-button:hover {
+      @apply bg-surface/50;
+    }
   }
   .drag-handle {
     touch-action: none;

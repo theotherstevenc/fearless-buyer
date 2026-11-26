@@ -10,6 +10,7 @@ dist/
 *service-account*.json
 *serviceAccount*.json
 .firebase/
+firebase-export-*/
 *.log
 coverage/
 .DS_Store

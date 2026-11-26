@@ -25,6 +25,8 @@ export const householdId: string = import.meta.env.VITE_HOUSEHOLD_ID ?? 'home'
 
 if (useEmulators) {
   if (!projectId.startsWith('demo-')) throw new Error('Local emulators require a demo- project ID.')
-  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
-  connectFirestoreEmulator(db, '127.0.0.1', 8080)
+  // Use the page's host so a phone on the LAN (npm run dev:lan) reaches the emulators on this machine.
+  const emulatorHost = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname
+  connectAuthEmulator(auth, `http://${emulatorHost}:9099`, { disableWarnings: true })
+  connectFirestoreEmulator(db, emulatorHost, 8080)
 }

@@ -52,7 +52,6 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
     <Modal
       isOpen
       title="Your store, your route"
-      description="Arrange sections and items in the order you shop. Hold a name to drag, or use the arrows."
       onClose={() => {
         if (!isBusy) onClose()
       }}
