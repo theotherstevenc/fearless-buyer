@@ -117,9 +117,10 @@ client/                  React app (npm workspace)
   src/lib/               Firebase setup and pure grocery helpers
   src/schemas/           Zod schemas for Firestore data
   src/services/          Firestore transactions for list and catalog changes
-data/catalogSeed.json    A versioned starter catalog (not loaded automatically)
+data/catalogSeed.json    A versioned starter catalog (imported only with setup:production --seed)
 docs/plan.md             Design decisions and implementation history
 scripts/setupLocal.ts    Creates the local accounts and household
+scripts/setupProduction.ts  Creates the production household and member accounts
 tests/                   Firestore security rules tests
 firestore.rules          Security rules
 firebase.json            Hosting and emulator configuration
@@ -145,15 +146,42 @@ Client settings are read from `client/.env.local`. Use `client/.env.example` as 
 
 Fearless Buyer hasn't been deployed yet, and there is no production Firebase project. When it's time, the outline below is a starting point. Each step changes real infrastructure, so it's worth going through deliberately.
 
-1. Create a Firebase project and enable **Email/Password** sign-in.
-2. Point the CLI at it by adding a `.firebaserc` with the project ID.
-3. Fill in `client/.env.local` with the project's web app settings and set `VITE_USE_FIREBASE_EMULATORS=false`.
-4. Create the two member accounts and the household document. The household needs `memberUids` (exactly two user IDs), an empty `shoppingLists/active` list, and a `metadata/ordering` document with `revision: 0`. `scripts/setupLocal.ts` shows the shape but only targets the emulators, so a production setup step still needs to be written.
-5. Build and deploy the rules and the app:
+1. In the [Firebase console](https://console.firebase.google.com/), create a Firebase project and enable **Email/Password** sign-in.
+2. Create a **Firestore database** in production mode, which denies all access until the rules are deployed. Its location can't be changed later, so pick one near you.
+3. Register a **web app** in the project settings to get its configuration values.
+4. Sign the CLI in with `./node_modules/.bin/firebase login`, and point it at the project by adding a `.firebaserc` with the project ID.
+5. Deploy the security rules before any data exists:
+
+   ```bash
+   ./node_modules/.bin/firebase deploy --only firestore:rules
+   ```
+
+6. Create the two member accounts and the household with `npm run setup:production` (see [Production setup](#production-setup)).
+7. Put the web app's settings in `client/.env.production.local` (Git-ignored). Vite reads it only for `npm run build`, so `npm run dev` keeps using the emulators. Avoid `client/.env.local` for real values; it also applies to `npm run dev`.
+8. Build and deploy the app:
 
    ```bash
    npm run build
-   ./node_modules/.bin/firebase deploy --only firestore:rules,hosting
+   ./node_modules/.bin/firebase deploy --only hosting
    ```
 
-The real household starts with an empty catalog. Add your store's sections and groceries in the app. `data/catalogSeed.json` is kept for reference, and importing it would need its own explicit tooling.
+The real household starts with an empty catalog unless you pass `--seed` to the setup script. Otherwise, add your store's sections and groceries in the app.
+
+### Production setup
+
+`scripts/setupProduction.ts` creates the household for a real Firebase project. It uses the Firebase Admin SDK with [Application Default Credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc): run `gcloud auth application-default login` and `gcloud auth application-default set-quota-project <project-id>` first. A service account key in `GOOGLE_APPLICATION_CREDENTIALS` also works. Keep it outside the repository, and delete both the file and the key (Google Cloud console → IAM & Admin → Service accounts → Keys) after setup.
+
+```bash
+npm run setup:production -- --project <project-id> --member <email> --member <email> [--seed] [--household home]
+```
+
+The script:
+
+- Shows what it will create and asks you to type the project ID before changing anything.
+- Stops without changes if the household already exists, so it never overwrites data.
+- Reuses an existing account for an email and leaves its password unchanged. Otherwise it creates the account without a password.
+- Prints a one-time password-reset link for each new account so each person chooses their own password. Share each link privately; they expire and aren't saved.
+- With `--seed`, imports `data/catalogSeed.json` (sections and items in their saved order) in the same atomic write as the household.
+- Refuses `demo-` projects, so it can't be pointed at local data by mistake.
+
+To rehearse safely first, `npm run rehearse:production` runs the script against fresh, throwaway emulators (stop `npm run dev` first; both use the same ports). Type `demo-fearless-buyer-rehearsal` when asked. Nothing is saved when it finishes.

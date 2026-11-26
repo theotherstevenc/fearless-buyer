@@ -150,10 +150,32 @@ Next priorities:
    persistence, phone testing, validation, configuration, and a deployment
    outline (not yet deployed). Add explicit seed import/migration tooling when
    requested; the committed seed is not automatically loaded or deployed.
-5. Next, as the user chooses: the manual checks listed in item 2, seed import
-   tooling, or production provisioning. Deployment is on hold by user request
-   (2026-11-25); its first piece is a production account/household setup script
-   (`scripts/setupLocal.ts` targets only the emulators).
+5. Next, as the user chooses: the manual checks listed in item 2, or
+   production provisioning. Deployment is on hold by user request
+   (2026-11-25).
+6. 2026-11-26 (uncommitted, awaiting review): `scripts/setupProduction.ts`
+   (`npm run setup:production`) provisions a real project with the Admin SDK and
+   Application Default Credentials (no key file). It requires `--project` and two
+   `--member` emails, refuses `demo-` projects (and requires them for emulator
+   rehearsals), asks the user to retype the project ID, and stops if the
+   household exists. Existing accounts are reused without password changes; new
+   accounts get no password and a printed one-time reset link. `--seed` imports
+   `data/catalogSeed.json` in the same atomic batch. `npm run rehearse:production`
+   runs it against throwaway emulators. Rehearsal verified seed counts and
+   order, reuse of an existing account, wrong-confirmation and rerun refusals,
+   and that rules accept a member's add/move/delete afterward. Real runs refuse
+   placeholder (`example.*`, `.test`) emails.
+7. 2026-11-26: production is live at https://fearless-buyer.web.app (Firebase
+   project `fearless-buyer`, `.firebaserc`). Rules deployed first, then
+   `setup:production --seed` created `households/home` with both members, the
+   empty list, and all 69 seed items (counts verified); both members set
+   passwords via reset links. The `firebase-adminsdk-fbsvc` service account
+   needed the **Cloud Datastore User** IAM role (new projects only grant Auth).
+   The temporary admin key was deleted locally; deleting it in Google Cloud
+   (IAM & Admin → Service accounts → Keys) is the user's step. Real web config
+   lives in Git-ignored `client/.env.production.local`, which only `npm run
+build` reads, so `npm run dev` stays on the emulators. Every future deploy
+   still needs separate approval.
 
 Latest full application validation passed: ESLint, Prettier, TypeScript/build,
 37 client tests, and 20 emulator tests. The seed separately passed strict schema,
