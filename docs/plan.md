@@ -129,8 +129,20 @@ Next priorities:
    confirmed: two-person sync, offline errors, long-press/keyboard reordering,
    live dark-mode switching, and VoiceOver. Browser automation remains removed
    by user request.
-3. Assess the existing bundle-size warning and outstanding dependency advisory
-   status; do not treat the scoped font installation's audit as a full assessment.
+3. Assessed 2026-11-25 (uncommitted: `client/vite.config.ts`, `package-lock.json`).
+   - Bundle: a production build without `VITE_FIREBASE_*` env hits the config
+     `throw` in `lib/firebase.ts`, so the app is tree-shaken away and sizes are
+     misleading. With placeholder env the single chunk was 1,005 kB (306 kB gzip).
+     Firestore is ~490 kB of that and must stay the full SDK (`onSnapshot`).
+     Vite now splits `firestore`, `firebase`, `react`, and `vendor` chunks; the
+     app chunk is ~29 kB, every chunk is under 500 kB, and the warning is gone.
+     Total download is unchanged; vendor chunks stay cached across app deploys.
+   - Advisories: `npm audit --omit=dev` reports 0. `npm audit fix` (non-breaking)
+     updated `re2` 1.24.1 → 1.27.2 (via `firebase-tools` → `superstatic`); the
+     Hosting emulator was smoke-tested. The remaining 13 moderate advisories are
+     dev-only, inside `firebase-tools`/`firebase-admin` (glob, minimatch, uuid,
+     `@opentelemetry/core`); npm's `--force` fix downgrades `firebase-tools` to
+     13.x, so they are accepted until upstream releases fixes.
 4. Write the setup README. Add explicit seed import/migration tooling when
    requested; the committed seed is not automatically loaded or deployed.
 
