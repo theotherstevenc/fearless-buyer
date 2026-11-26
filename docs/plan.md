@@ -143,7 +143,9 @@ Next priorities:
      dev-only, inside `firebase-tools`/`firebase-admin` (glob, minimatch, uuid,
      `@opentelemetry/core`); npm's `--force` fix downgrades `firebase-tools` to
      13.x, so they are accepted until upstream releases fixes.
-4. Write the setup README. Add explicit seed import/migration tooling when
+4. Done 2026-11-25 (uncommitted): `README.md` covers local setup, development,
+   persistence, phone testing, validation, configuration, and a deployment
+   outline (not yet deployed). Add explicit seed import/migration tooling when
    requested; the committed seed is not automatically loaded or deployed.
 
 Latest full application validation passed: ESLint, Prettier, TypeScript/build,
