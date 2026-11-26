@@ -22,7 +22,9 @@
     "test": "npm test -w client",
     "test:rules": "firebase emulators:exec --only auth,firestore --project demo-fearless-buyer \"vitest run --config vitest.emulator.config.ts\"",
     "validate": "npm run lint && npm run format:check && npm run build && npm test && npm run test:rules",
-    "setup:local": "tsx scripts/setupLocal.ts"
+    "setup:local": "tsx scripts/setupLocal.ts",
+    "setup:production": "tsx scripts/setupProduction.ts",
+    "rehearse:production": "firebase emulators:exec --only auth,firestore --project demo-fearless-buyer-rehearsal \"tsx scripts/setupProduction.ts --project demo-fearless-buyer-rehearsal --member one@example.test --member two@example.test --seed\""
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",
