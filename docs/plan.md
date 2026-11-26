@@ -42,21 +42,24 @@ At initial planning there was no grocery codebase. The inspected reference proje
   caches, charts, and data imports are not needed here.
 
 The new app workspace has been created and its dependencies installed locally.
-No reference repository files were changed. Approved, signed local commits
-exist on `main` (see Commit handoff). No remote, pushes, production Firebase
-resources, or deployments have been created.
+No reference repository files were changed. Approved, signed commits are on
+`main` at `origin` (github.com/theotherstevenc/fearless-buyer, public). No
+production Firebase resources or deployments have been created.
 
 ## Implementation progress
 
-### Jump in next time (updated 2026-11-24)
+### Jump in next time (updated 2026-11-25)
 
 **Starting state:** the user considers the app v1-ready. Local app/emulators are
-stopped and data was exported cleanly. Latest signed local commits (2026-11-24):
-`199fe6a chore: add opt-in LAN dev mode for device testing`,
-`70cc15c feat: apply warm grocer theme and polish management UI`, and
-`77d7490 chore: persist local emulator data across restarts`. The safe seed has
-seven sections and 69 items. `docs/list.md` is untracked and must remain
-untouched unless requested. Any further commit or push needs separate approval.
+stopped and data was exported cleanly. On 2026-11-25 the branch
+`chore-assess-bundle-and-advisories` was pushed and merged into `main` on GitHub
+via pull request. It carried the previously unpushed local `main` commits
+(`35d3b45` emulator persistence, `77529de` warm grocer theme, `20c4676` LAN dev
+mode, `b7b0908` handoff refresh) plus vendor chunk splitting and the `re2`
+patch, the setup README, and this handoff refresh. Start by checking out `main`
+and pulling. The safe seed has seven sections and 69 items. `docs/list.md` is
+untracked and must remain untouched unless requested. Any further commit, merge,
+or push needs separate approval.
 
 **Local data now persists automatically.** `npm run dev` and `npm run emulators`
 import from and export on exit to `.firebase/emulator-data/` (Git-ignored). It
@@ -129,7 +132,7 @@ Next priorities:
    confirmed: two-person sync, offline errors, long-press/keyboard reordering,
    live dark-mode switching, and VoiceOver. Browser automation remains removed
    by user request.
-3. Assessed 2026-11-25 (uncommitted: `client/vite.config.ts`, `package-lock.json`).
+3. Done 2026-11-25 (`5b0a3af`).
    - Bundle: a production build without `VITE_FIREBASE_*` env hits the config
      `throw` in `lib/firebase.ts`, so the app is tree-shaken away and sizes are
      misleading. With placeholder env the single chunk was 1,005 kB (306 kB gzip).
@@ -143,17 +146,22 @@ Next priorities:
      dev-only, inside `firebase-tools`/`firebase-admin` (glob, minimatch, uuid,
      `@opentelemetry/core`); npm's `--force` fix downgrades `firebase-tools` to
      13.x, so they are accepted until upstream releases fixes.
-4. Done 2026-11-25 (uncommitted): `README.md` covers local setup, development,
+4. Done 2026-11-25 (`5645d5e`): `README.md` covers local setup, development,
    persistence, phone testing, validation, configuration, and a deployment
    outline (not yet deployed). Add explicit seed import/migration tooling when
    requested; the committed seed is not automatically loaded or deployed.
+5. Next, as the user chooses: the manual checks listed in item 2, seed import
+   tooling, or production provisioning. Deployment is on hold by user request
+   (2026-11-25); its first piece is a production account/household setup script
+   (`scripts/setupLocal.ts` targets only the emulators).
 
 Latest full application validation passed: ESLint, Prettier, TypeScript/build,
 37 client tests, and 20 emulator tests. The seed separately passed strict schema,
 count/order, and live-catalog comparison checks. While emulators are already
 running, use `./node_modules/.bin/vitest run --config vitest.emulator.config.ts`
 for rules tests; do not start a second emulator or target the live
-household. No remote, push, production provisioning, or deployment is authorized.
+household. Production provisioning and deployment are not authorized; each push
+or merge needs separate approval.
 
 ### End-of-day catalog seed checkpoint (2026-11-23, 22:16)
 
