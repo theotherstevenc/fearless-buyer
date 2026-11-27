@@ -12,13 +12,15 @@ vi.mock('./lib/firebase', () => ({ auth: {} }))
 vi.mock('./context/useAuth', () => ({
   useAuth: () => ({ user: { uid: 'buyer-one' }, isLoading: false, error: null }),
 }))
-vi.mock('./hooks/useConnectivity', () => ({ useConnectivity: () => true }))
+const connectivity = vi.hoisted(() => ({ isOnline: true }))
+vi.mock('./hooks/useConnectivity', () => ({ useConnectivity: () => connectivity.isOnline }))
+const householdState = vi.hoisted(() => ({ hasPendingWrites: false }))
 vi.mock('./hooks/useHousehold', () => ({
   useHousehold: () => ({
     data: fixtureData,
     isLoading: false,
     isFromCache: false,
-    hasPendingWrites: false,
+    hasPendingWrites: householdState.hasPendingWrites,
     error: null,
     retry: vi.fn(),
   }),
@@ -34,6 +36,8 @@ vi.mock('./services/groceries', () => ({
 }))
 
 beforeEach(() => {
+  connectivity.isOnline = true
+  householdState.hasPendingWrites = false
   vi.mocked(signOut).mockReset().mockResolvedValue(undefined)
 })
 
@@ -44,6 +48,20 @@ describe('App', () => {
     expect(tabs.map((tab) => tab.textContent)).toEqual(['Grocery List 0', 'Catalog'])
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
   })
+  it('shows the offline state in the header', () => {
+    connectivity.isOnline = false
+    render(<App />)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Offline Buyer')
+    expect(screen.getAllByText('List changes will sync when you reconnect.')).toHaveLength(2)
+  })
+
+  it('keeps store controls enabled while list changes sync', () => {
+    householdState.hasPendingWrites = true
+    render(<App />)
+    expect(screen.getByRole('button', { name: 'Add item' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Manage store and catalog' })).toBeEnabled()
+  })
+
   it('keeps the catalog usable while a selection is still syncing', async () => {
     vi.mocked(updateSelection).mockReturnValueOnce(new Promise(() => {}))
     render(<App />)

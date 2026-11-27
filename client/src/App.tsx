@@ -89,14 +89,25 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
     return !hasFailed
   }
   // Store management and list resets still use server transactions, so they need a live connection.
-  const disabled = isBusy || !isOnline || household.isFromCache || household.hasPendingWrites
+  // Pending list writes don't block them: transactions read from the server, and gating on
+  // hasPendingWrites made these buttons flicker on every selection.
+  const disabled = isBusy || !isOnline || household.isFromCache
   const count = data ? Object.keys(data.list.items).length : 0
+  const connectionMessage = !isOnline
+    ? 'List changes will sync when you reconnect.'
+    : household.isFromCache
+      ? 'Connecting - showing saved data.'
+      : ''
   return (
     <main className={`app-shell ${isBusy ? 'is-saving' : ''}`}>
       <header className="app-header">
         <div className="brand-copy min-w-0">
-          <h1 className="text-2xl min-[390px]:text-3xl font-bold">Fearless Buyer</h1>
-          <p className="text-base min-[390px]:text-lg opacity-80">Your weekly haul, in order.</p>
+          <h1 className="text-2xl min-[390px]:text-3xl font-bold">
+            {isOnline ? 'Fearless Buyer' : 'Offline Buyer'}
+          </h1>
+          <p className="text-base min-[390px]:text-lg opacity-80">
+            {connectionMessage || 'Your weekly haul, in order.'}
+          </p>
         </div>
         <div className="flex shrink-0 gap-1">
           <button
@@ -119,12 +130,9 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
           </button>
         </div>
       </header>
-      <div className="sync-status" role="status" aria-live="polite">
-        {!isOnline
-          ? 'Offline - list changes will sync when you reconnect.'
-          : household.isFromCache
-            ? 'Connecting - shown data may be cached.'
-            : ''}
+      {/* The header shows connection state visually; this announces changes to screen readers. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {connectionMessage}
       </div>
       {(error || household.error) && !isLogoutOpen && (
         <div className="error mb-4" role="alert">

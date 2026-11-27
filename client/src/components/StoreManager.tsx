@@ -51,6 +51,7 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
   return (
     <Modal
       isOpen
+      hasDisplayTitle
       title="Your store, your route"
       onClose={() => {
         if (!isBusy) onClose()

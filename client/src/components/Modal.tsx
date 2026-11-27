@@ -7,6 +7,7 @@ interface ModalProps {
   title: string
   description?: string
   isTitleHidden?: boolean
+  hasDisplayTitle?: boolean
   hasCloseButton?: boolean
   isOpen: boolean
   onClose: () => void
@@ -17,6 +18,7 @@ export const Modal = ({
   title,
   description,
   isTitleHidden = false,
+  hasDisplayTitle = false,
   hasCloseButton = true,
   isOpen,
   onClose,
@@ -47,7 +49,15 @@ export const Modal = ({
         >
           {!isTitleHidden || hasCloseButton ? (
             <div className={`modal-header ${isTitleHidden ? 'justify-end' : 'justify-between'}`}>
-              <Dialog.Title className={isTitleHidden ? 'sr-only' : 'text-xl font-semibold'}>
+              <Dialog.Title
+                className={
+                  isTitleHidden
+                    ? 'sr-only'
+                    : hasDisplayTitle
+                      ? 'font-display text-xl min-[390px]:text-2xl font-bold'
+                      : 'text-xl font-semibold'
+                }
+              >
                 {title}
               </Dialog.Title>
               {hasCloseButton && (
