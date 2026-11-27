@@ -142,9 +142,9 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
               Add item
             </button>
             {groups.map(({ section, items }) => (
-              <section key={section.id} aria-label={`${section.name} items`}>
-                <h3 className="section-heading" title={section.name}>
-                  {section.name}
+              <section key={section.id} className="manage-section" aria-label={`${section.name} items`}>
+                <h3 className="manage-section-heading" title={section.name}>
+                  <span>{section.name}</span>
                 </h3>
                 {items.length > 0 ? (
                   <SortableRows
