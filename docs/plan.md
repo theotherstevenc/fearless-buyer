@@ -51,7 +51,24 @@ production Firebase resources or deployments have been created.
 ### Jump in next time (updated 2026-11-27)
 
 **Latest (2026-11-27):** work is on the local branch `feat-instant-list-updates`
-(not pushed); see item 8 under Next priorities.
+(not pushed, not merged; production Hosting is ahead of `main`). Everything on
+the branch, including the follow-up polish and Hosting cache headers, was
+deployed to production on 2026-11-27. See item 8 under Next priorities.
+
+**Start next session with:**
+
+1. Phone check of the deployed build: iOS input zoom, fixed dialog headers,
+   rapid catalog selection, offline check-off then sync, the "Offline Buyer"
+   header, display-font dialog titles on the iPhone 13 mini, and header-to-tab
+   spacing.
+2. Add a service worker (`vite-plugin-pwa`, dev dependency) so the app shell
+   opens with no signal. Today offline editing only works if the page is
+   already loaded; an iOS tab reload in the store fails. Needs an update
+   prompt or auto-update strategy and must keep `index.html` fresh.
+3. Tidy-ups: remove the unused `hasPendingWrites` from `useHousehold`; consider
+   an immediate mouse drag (distance constraint) on desktop instead of the
+   300 ms hold; optionally clear the Firestore cache on sign-out.
+4. Ask before pushing `feat-instant-list-updates` or opening a pull request.
 
 **Starting state:** the user considers the app v1-ready. Local app/emulators are
 stopped and data was exported cleanly. On 2026-11-25 the branch
@@ -198,7 +215,8 @@ build` reads, so `npm run dev` stays on the emulators. Every future deploy
      once, syncs in the background (including while offline), and rolls back
      anything the rules reject; the app then shows the error. They no longer use
      the busy lock. Catalog, section, ordering, delete, and New list keep their
-     transactions and stay disabled while offline or syncing. The persistent
+     transactions and stay disabled while offline or connecting (not while list
+     changes are still syncing, which made those buttons flicker). The persistent
      Firestore cache (`persistentLocalCache`, multi-tab) is now enabled, so the
      list opens with poor signal and survives reloads. Selection feedback is
      the exit animation only.
@@ -209,14 +227,27 @@ build` reads, so `npm run dev` stays on the emulators. Every future deploy
      `chunkSizeWarningLimit` is 600 kB.
    - Not yet checked on a real phone: the zoom fix, fixed dialog headers, rapid
      selection, and offline check-off with later sync.
+   - Deployed to production (Hosting only) from commit `6f9b8cf` on 2026-11-27,
+     then again with the follow-up polish and caching below.
+   - Follow-up polish: connection state moved into the header ("Offline
+     Buyer"), the empty status region no longer reserves space under the
+     header, header and New list buttons no longer flicker while list changes
+     sync, desktop drag rows show grab/grabbing cursors (mouse drag still needs
+     a 300 ms hold), and the store manager and add-item dialog titles use the
+     Kalam display font (`text-xl` below 390px).
+   - Hosting caching: `/assets/**` (hashed build files) is served with
+     `public, max-age=31536000, immutable`; everything else (`index.html` and
+     SPA routes) with `no-cache`, so new deploys are picked up immediately. The
+     later, more specific header rule wins; verified on the Hosting emulator.
+   - Next session: see "Start next session with" above.
 
 Latest full application validation passed (2026-11-27): ESLint, Prettier,
-TypeScript/build, 40 client tests, and 21 emulator tests. The seed separately passed strict schema,
+TypeScript/build, 42 client tests, and 21 emulator tests. The seed separately passed strict schema,
 count/order, and live-catalog comparison checks. While emulators are already
 running, use `./node_modules/.bin/vitest run --config vitest.emulator.config.ts`
 for rules tests; do not start a second emulator or target the live
-household. Production provisioning and deployment are not authorized; each push
-or merge needs separate approval.
+household. Production provisioning is complete; each deploy, push, or merge
+needs separate approval.
 
 ### End-of-day catalog seed checkpoint (2026-11-23, 22:16)
 
@@ -858,9 +889,14 @@ management changes do not silently lose ordering edits.
   List returns an item to the catalog.
 - Respect reduced motion; maintain sensible keyboard focus after a row exits.
 - The persistent Firestore cache is enabled (2026-11-27). List changes (select,
-  check-off, remove) work offline and sync on reconnect; the offline banner says
-  so. Catalog, section, ordering, delete, and New list use transactions, which
-  require connectivity, and stay disabled while offline, connecting, or syncing.
+  check-off, remove) work offline and sync on reconnect. Connection state lives in
+  the header (no separate status line): offline shows "Offline Buyer" / "List
+  changes will sync when you reconnect."; connecting shows "Connecting - showing
+  saved data." as the subtitle. A visually hidden live region announces it.
+  Catalog, section, ordering, delete, and New list use transactions, which
+  require connectivity, and stay disabled while offline or connecting. They are
+  not disabled while list changes are still syncing (`hasPendingWrites`); doing
+  so made the header and New list buttons flicker on every selection.
   Cached snapshots must not be represented as proof of a fresh server connection.
 - Expose connectivity and error states accurately.
 
