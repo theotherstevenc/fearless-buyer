@@ -83,7 +83,8 @@
   }
   input,
   select {
-    @apply w-full rounded-lg border border-control-border bg-surface px-3 py-3 min-h-11;
+    /* 16px or larger keeps iOS Safari from zooming in when a field is focused. */
+    @apply w-full rounded-lg border border-control-border bg-surface px-3 py-3 min-h-11 text-base;
   }
 }
 
@@ -92,19 +93,13 @@
     @apply mx-auto max-w-3xl px-4 py-5 sm:px-6 sm:py-8;
   }
   .app-header {
-    @apply flex items-center justify-between gap-3 rounded-2xl bg-brand-surface text-on-brand px-5 py-5;
+    @apply flex items-center justify-between gap-3 rounded-2xl bg-brand-surface text-on-brand px-5 py-5 mb-4;
   }
   .brand-copy {
     @apply font-display;
   }
   .header-button {
     @apply flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-on-brand/15;
-  }
-  .sync-status {
-    @apply text-muted text-xs;
-  }
-  .sync-status:not(:empty) {
-    @apply py-3;
   }
   .tabs {
     @apply grid grid-cols-2 gap-1 rounded-xl bg-soft p-1 mb-6;
@@ -201,14 +196,24 @@
   .error {
     @apply rounded-lg bg-danger-soft text-danger p-3 text-sm;
   }
+  /* Always rendered so screen readers announce updates; takes no space while empty. */
   .notice {
-    @apply min-h-5 text-sm text-success my-2;
+    @apply text-sm text-success mb-4;
+  }
+  .notice:empty {
+    @apply mb-0;
   }
   .modal-overlay {
     @apply fixed inset-0 z-50 bg-overlay/55 backdrop-blur-[2px];
   }
   .modal-content {
-    @apply fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-2xl border-2 border-border bg-surface p-5 shadow-2xl sm:p-6;
+    @apply fixed left-1/2 top-1/2 z-50 flex w-[calc(100%-2rem)] max-w-xl max-h-[85dvh] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border-2 border-border bg-surface shadow-2xl;
+  }
+  .modal-header {
+    @apply flex shrink-0 items-center gap-3 border-b border-border px-5 py-3 sm:px-6;
+  }
+  .modal-body {
+    @apply flex-1 overflow-y-auto p-5 sm:p-6;
   }
   .manage-rows {
     @apply list-none p-0 m-0 rounded-lg border border-border bg-surface;
@@ -249,8 +254,16 @@
   .drag-handle {
     touch-action: none;
   }
+  .drag-handle:not(:disabled),
+  .manage-row-label:not(:disabled) {
+    @apply cursor-grab;
+  }
   .dragging {
     @apply relative z-10 shadow-lg;
+  }
+  .dragging .drag-handle,
+  .dragging .manage-row-label {
+    @apply cursor-grabbing;
   }
   .app-footer {
     @apply text-center text-xs text-muted mt-10 pb-5;

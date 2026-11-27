@@ -1,4 +1,4 @@
-import { Pencil, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useRef } from 'react'
 
 import { groupGroceries } from '../lib/groceries'
@@ -9,11 +9,10 @@ interface CatalogTabProps {
   isBusy: boolean
   exitingItems: CatalogItem[]
   onSelect: (item: CatalogItem) => Promise<boolean>
-  onEdit: (item: CatalogItem) => void
   onManage: () => void
 }
 
-export const CatalogTab = ({ data, isBusy, exitingItems, onSelect, onEdit, onManage }: CatalogTabProps) => {
+export const CatalogTab = ({ data, isBusy, exitingItems, onSelect, onManage }: CatalogTabProps) => {
   const sectionRef = useRef<HTMLElement>(null)
   const exitingIds = new Set(exitingItems.map((item) => item.id))
   const visibleList = { items: { ...data.list.items } }
@@ -58,14 +57,6 @@ export const CatalogTab = ({ data, isBusy, exitingItems, onSelect, onEdit, onMan
                       <Plus size={18} aria-hidden="true" />
                     </span>
                     <span>{item.name}</span>
-                  </button>
-                  <button
-                    className="icon-button text-muted"
-                    disabled={isBusy}
-                    onClick={() => onEdit(item)}
-                    aria-label={`Edit ${item.name}`}
-                  >
-                    <Pencil size={17} />
                   </button>
                 </div>
               </div>

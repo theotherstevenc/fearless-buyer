@@ -1,4 +1,12 @@
-import { collection, deleteField, doc, FieldPath, runTransaction, serverTimestamp } from 'firebase/firestore'
+import {
+  collection,
+  deleteField,
+  doc,
+  FieldPath,
+  runTransaction,
+  serverTimestamp,
+  updateDoc,
+} from 'firebase/firestore'
 
 import { changeSelection, EMPTY_LIST } from '../lib/groceries'
 import { db, householdId } from '../lib/firebase'
@@ -10,7 +18,7 @@ import {
   sectionSchema,
   selectionSchema,
 } from '../schemas/models'
-import type { CatalogItem, Section } from '../schemas/models'
+import type { ActiveList, CatalogItem, Section } from '../schemas/models'
 
 export const householdRef = doc(db, 'households', householdId)
 export const sectionsRef = collection(householdRef, 'sections')
@@ -20,25 +28,23 @@ export const orderRef = doc(householdRef, 'metadata', 'ordering')
 
 type ListAction = Parameters<typeof changeSelection>[2]
 
-export const updateSelection = async (itemId: string, action: ListAction): Promise<void> => {
+// A plain write (not a transaction) so Firestore shows the change on this device immediately and
+// syncs it in the background, including while offline. Only the one item's entry is written, and
+// the security rules still validate it on the server; if they reject it, Firestore rolls it back.
+export const updateSelection = async (
+  list: ActiveList,
+  itemId: string,
+  action: ListAction,
+): Promise<void> => {
   if (action.type === 'quantity') selectionSchema.shape.quantity.parse(action.quantity)
-  await runTransaction(db, async (transaction) => {
-    const snapshot = await transaction.get(listRef)
-    const list = snapshot.exists() ? activeListSchema.parse(snapshot.data()) : EMPTY_LIST
-    if (action.type === 'select') {
-      const item = await transaction.get(doc(catalogRef, itemId))
-      if (!item.exists()) throw new Error('This item no longer exists in the catalog.')
-    }
-    const updated = changeSelection(list, itemId, action)
-    if (!snapshot.exists()) throw new Error('Household setup is incomplete. Create the active list first.')
-    transaction.update(
-      listRef,
-      new FieldPath('items', itemId),
-      updated.items[itemId] ?? deleteField(),
-      'changedItemId',
-      itemId,
-    )
-  })
+  const updated = changeSelection(list, itemId, action)
+  await updateDoc(
+    listRef,
+    new FieldPath('items', itemId),
+    updated.items[itemId] ?? deleteField(),
+    'changedItemId',
+    itemId,
+  )
 }
 
 export const resetList = async (): Promise<void> => {

@@ -8,6 +8,7 @@ import { Modal } from './Modal'
 interface GroceryListTabProps {
   data: HouseholdData
   isBusy: boolean
+  isResetDisabled: boolean
   onComplete: (id: string, completed: boolean) => Promise<boolean>
   onRemove: (id: string) => Promise<boolean>
   onReset: () => Promise<boolean>
@@ -17,6 +18,7 @@ interface GroceryListTabProps {
 export const GroceryListTab = ({
   data,
   isBusy,
+  isResetDisabled,
   onComplete,
   onRemove,
   onReset,
@@ -71,7 +73,7 @@ export const GroceryListTab = ({
           <p>
             {completed} of {selected.length} in cart
           </p>
-          <button className="button-primary" disabled={isBusy} onClick={() => setIsResetOpen(true)}>
+          <button className="button-primary" disabled={isResetDisabled} onClick={() => setIsResetOpen(true)}>
             <RotateCcw size={18} aria-hidden="true" />
             New list
           </button>

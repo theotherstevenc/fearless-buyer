@@ -1,6 +1,11 @@
 import { initializeApp } from 'firebase/app'
 import { connectAuthEmulator, getAuth } from 'firebase/auth'
-import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+import {
+  connectFirestoreEmulator,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 const useEmulators = import.meta.env.DEV && (import.meta.env.VITE_USE_FIREBASE_EMULATORS ?? 'true') === 'true'
 const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID ?? (useEmulators ? 'demo-fearless-buyer' : '')
@@ -20,7 +25,10 @@ const app = initializeApp({
 })
 
 export const auth = getAuth(app)
-export const db = getFirestore(app)
+// Keep data on the device so the list opens and accepts changes with poor signal in the store.
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+})
 export const householdId: string = import.meta.env.VITE_HOUSEHOLD_ID ?? 'home'
 
 if (useEmulators) {

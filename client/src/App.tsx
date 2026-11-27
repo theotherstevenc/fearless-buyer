@@ -17,6 +17,8 @@ import { getErrorMessage } from './lib/groceries'
 import type { CatalogItem } from './schemas/models'
 import { resetList, updateSelection } from './services/groceries'
 
+type ListAction = Parameters<typeof updateSelection>[2]
+
 // Keep in sync with the .row-exiting animation in index.css.
 const CATALOG_EXIT_DURATION_MS = 450
 
@@ -30,12 +32,11 @@ interface HouseholdAppProps {
 const HouseholdApp = ({ userId }: HouseholdAppProps) => {
   const household = useHousehold(userId)
   const isOnline = useConnectivity()
-  const [tab, setTab] = useState('catalog')
+  const [tab, setTab] = useState('list')
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [exitingItems, setExitingItems] = useState<CatalogItem[]>([])
-  const [editingItem, setEditingItem] = useState<CatalogItem | undefined>()
   const [isAddingItem, setIsAddingItem] = useState(false)
   const [isManaging, setIsManaging] = useState(false)
   const [isLogoutOpen, setIsLogoutOpen] = useState(false)
@@ -61,31 +62,56 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
       setIsBusy(false)
     }
   }
-  const handleSelect = async (item: CatalogItem): Promise<boolean> => {
-    setExitingItems((items) => [...items, item])
-    const start = performance.now()
-    // Only the write blocks other operations; the exit animation finishes afterward.
-    const success = await operate(() => updateSelection(item.id, { type: 'select' }))
-    if (success) {
-      const remainingMs = getExitDurationMs() - (performance.now() - start)
-      if (remainingMs > 0) await new Promise((resolve) => setTimeout(resolve, remainingMs))
-    }
-    setExitingItems((items) => items.filter((exiting) => exiting.id !== item.id))
-    return success
-  }
   const data = household.data
-  const disabled = isBusy || !isOnline || household.isFromCache || household.hasPendingWrites
+  // List changes apply on this device immediately and sync in the background, so they never
+  // wait on the network or lock the screen. A rejected write is rolled back by Firestore.
+  const changeList = (itemId: string, action: ListAction): Promise<boolean> => {
+    if (!data) return Promise.resolve(false)
+    setError('')
+    setNotice('')
+    return updateSelection(data.list, itemId, action).then(
+      () => true,
+      (error: unknown) => {
+        console.error('Grocery list change failed', error)
+        setError(getErrorMessage(error))
+        return false
+      },
+    )
+  }
+  const handleSelect = async (item: CatalogItem): Promise<boolean> => {
+    let hasFailed = false
+    void changeList(item.id, { type: 'select' }).then((success) => {
+      hasFailed = !success
+    })
+    setExitingItems((items) => [...items, item])
+    await new Promise((resolve) => setTimeout(resolve, getExitDurationMs()))
+    setExitingItems((items) => items.filter((exiting) => exiting.id !== item.id))
+    return !hasFailed
+  }
+  // Store management and list resets still use server transactions, so they need a live connection.
+  // Pending list writes don't block them: transactions read from the server, and gating on
+  // hasPendingWrites made these buttons flicker on every selection.
+  const disabled = isBusy || !isOnline || household.isFromCache
   const count = data ? Object.keys(data.list.items).length : 0
+  const connectionMessage = !isOnline
+    ? 'List changes will sync when you reconnect.'
+    : household.isFromCache
+      ? 'Connecting - showing saved data.'
+      : ''
   return (
     <main className={`app-shell ${isBusy ? 'is-saving' : ''}`}>
       <header className="app-header">
         <div className="brand-copy min-w-0">
-          <h1 className="text-2xl min-[390px]:text-3xl font-bold">Fearless Buyer</h1>
-          <p className="text-base min-[390px]:text-lg opacity-80">Your weekly haul, in order.</p>
+          <h1 className="text-2xl min-[390px]:text-3xl font-bold">
+            {isOnline ? 'Fearless Buyer' : 'Offline Buyer'}
+          </h1>
+          <p className="text-base min-[390px]:text-lg opacity-80">
+            {connectionMessage || 'Your weekly haul, in order.'}
+          </p>
         </div>
         <div className="flex shrink-0 gap-1">
           <button
-            className="header-button max-[390px]:hidden"
+            className="header-button"
             disabled={disabled || !data || data.sections.length === 0}
             onClick={() => setIsAddingItem(true)}
             aria-label="Add item"
@@ -104,12 +130,9 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
           </button>
         </div>
       </header>
-      <div className="sync-status" role="status" aria-live="polite">
-        {!isOnline
-          ? 'Offline - reconnect to make changes.'
-          : household.isFromCache
-            ? 'Connecting - shown data may be cached.'
-            : ''}
+      {/* The header shows connection state visually; this announces changes to screen readers. */}
+      <div className="sr-only" role="status" aria-live="polite">
+        {connectionMessage}
       </div>
       {(error || household.error) && !isLogoutOpen && (
         <div className="error mb-4" role="alert">
@@ -132,47 +155,36 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
       {data && (
         <Tabs.Root value={tab} onValueChange={setTab}>
           <Tabs.List className="tabs" aria-label="Shopping views">
-            <Tabs.Trigger className="tab-button" value="catalog">
-              Catalog
-            </Tabs.Trigger>
             <Tabs.Trigger className="tab-button" value="list">
               Grocery List <span className="tab-count">{count}</span>
             </Tabs.Trigger>
+            <Tabs.Trigger className="tab-button" value="catalog">
+              Catalog
+            </Tabs.Trigger>
           </Tabs.List>
-          <Tabs.Content value="catalog" className="tab-content">
-            <CatalogTab
-              data={data}
-              isBusy={disabled}
-              exitingItems={exitingItems}
-              onSelect={handleSelect}
-              onEdit={setEditingItem}
-              onManage={() => setIsManaging(true)}
-            />
-          </Tabs.Content>
           <Tabs.Content value="list" className="tab-content">
             <GroceryListTab
               data={data}
-              isBusy={disabled}
+              isBusy={isBusy}
+              isResetDisabled={disabled}
               onChoose={() => setTab('catalog')}
-              onComplete={(id, completed) =>
-                operate(() => updateSelection(id, { type: 'complete', completed }))
-              }
-              onRemove={(id) => operate(() => updateSelection(id, { type: 'remove' }))}
+              onComplete={(id, completed) => changeList(id, { type: 'complete', completed })}
+              onRemove={(id) => changeList(id, { type: 'remove' })}
               onReset={() => operate(resetList, 'New list ready. Choose your items.')}
+            />
+          </Tabs.Content>
+          <Tabs.Content value="catalog" className="tab-content">
+            <CatalogTab
+              data={data}
+              isBusy={isBusy}
+              exitingItems={exitingItems}
+              onSelect={handleSelect}
+              onManage={() => setIsManaging(true)}
             />
           </Tabs.Content>
         </Tabs.Root>
       )}
-      {data && (editingItem || isAddingItem) && (
-        <ItemEditor
-          data={data}
-          item={editingItem}
-          onClose={() => {
-            setEditingItem(undefined)
-            setIsAddingItem(false)
-          }}
-        />
-      )}
+      {data && isAddingItem && <ItemEditor data={data} onClose={() => setIsAddingItem(false)} />}
       {data && isManaging && (
         <StoreManager data={data} isDisabled={disabled} onClose={() => setIsManaging(false)} />
       )}

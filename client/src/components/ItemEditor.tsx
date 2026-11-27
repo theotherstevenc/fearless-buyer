@@ -45,6 +45,7 @@ export const ItemEditor = ({ data, item, onClose }: ItemEditorProps) => {
   return (
     <Modal
       isOpen
+      hasDisplayTitle
       title={item ? 'Edit item' : 'What else sounds good?'}
       onClose={() => {
         if (!isBusy) onClose()
