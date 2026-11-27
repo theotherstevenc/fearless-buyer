@@ -48,7 +48,10 @@ production Firebase resources or deployments have been created.
 
 ## Implementation progress
 
-### Jump in next time (updated 2026-11-25)
+### Jump in next time (updated 2026-11-27)
+
+**Latest (2026-11-27):** work is on the local branch `feat-instant-list-updates`
+(not pushed); see item 8 under Next priorities.
 
 **Starting state:** the user considers the app v1-ready. Local app/emulators are
 stopped and data was exported cleanly. On 2026-11-25 the branch
@@ -120,7 +123,8 @@ UI and theme changes (2026-11-24, from the user's manual review):
   actions move to a full-width soft-background band; hover there is
   `bg-surface/50`.
 - Modals use a 2px border. A fixed header with a separately scrolling body was
-  tried and rejected because it used too much screen space.
+  tried and rejected because it used too much screen space; it was reinstated
+  at the user's request on 2026-11-27 (see item 8 below).
 - The store manager modal no longer shows a description; reordering guidance
   remains in the controls' accessible labels.
 
@@ -171,14 +175,43 @@ Next priorities:
    empty list, and all 69 seed items (counts verified); both members set
    passwords via reset links. The `firebase-adminsdk-fbsvc` service account
    needed the **Cloud Datastore User** IAM role (new projects only grant Auth).
-   The temporary admin key was deleted locally; deleting it in Google Cloud
-   (IAM & Admin → Service accounts → Keys) is the user's step. Real web config
+   The temporary admin key was deleted locally and in Google Cloud
+   (2026-11-26). Real web config
    lives in Git-ignored `client/.env.production.local`, which only `npm run
 build` reads, so `npm run dev` stays on the emulators. Every future deploy
    still needs separate approval.
+8. 2026-11-27 (branch `feat-instant-list-updates`, not pushed): revisions from
+   the user's phone review plus a fix for laggy, flickering selection.
+   - UI: the header "+" (Add item) now shows on all widths, including the
+     iPhone 13 mini. The catalog row Edit (pencil) action was removed; items are
+     edited in the store manager. Tabs are now Grocery List | Catalog, and
+     Grocery List opens by default. Inputs and selects use 16px text so iOS
+     Safari no longer zooms on focus (pinch-zoom is unaffected). Every dialog
+     keeps its title and close button in a fixed header while the body scrolls.
+   - Root cause of the lag: every list change ran a Firestore transaction (a
+     server round trip before the UI changed), and a single app-wide busy lock,
+     plus `isFromCache`/`hasPendingWrites`, disabled all controls until it
+     finished. Rows were also un-hidden when the transaction resolved, before
+     the list snapshot arrived, so they briefly reappeared.
+   - Fix: select, check-off, and remove are plain `updateDoc` writes of one
+     `items.<id>` entry plus `changedItemId`. Firestore applies them locally at
+     once, syncs in the background (including while offline), and rolls back
+     anything the rules reject; the app then shows the error. They no longer use
+     the busy lock. Catalog, section, ordering, delete, and New list keep their
+     transactions and stay disabled while offline or syncing. The persistent
+     Firestore cache (`persistentLocalCache`, multi-tab) is now enabled, so the
+     list opens with poor signal and survives reloads. Selection feedback is
+     the exit animation only.
+   - Accepted trade-offs: if both members select the same item at nearly the
+     same moment, the later write can reset its checkmark. Cached household
+     data stays in the browser after sign-out (clearing it is a possible
+     follow-up). The persistent cache grows the Firestore chunk to ~571 kB, so
+     `chunkSizeWarningLimit` is 600 kB.
+   - Not yet checked on a real phone: the zoom fix, fixed dialog headers, rapid
+     selection, and offline check-off with later sync.
 
-Latest full application validation passed: ESLint, Prettier, TypeScript/build,
-37 client tests, and 20 emulator tests. The seed separately passed strict schema,
+Latest full application validation passed (2026-11-27): ESLint, Prettier,
+TypeScript/build, 40 client tests, and 21 emulator tests. The seed separately passed strict schema,
 count/order, and live-catalog comparison checks. While emulators are already
 running, use `./node_modules/.bin/vitest run --config vitest.emulator.config.ts`
 for rules tests; do not start a second emulator or target the live
@@ -673,8 +706,9 @@ or merge needs separate approval.
 ### Catalog tab
 
 - Show reusable items that are not currently selected, in store order (no section headings).
-- Support Add Item (a "+" button in the app header) and an explicit Edit
-  action. Search is removed for now and may return.
+- Support Add Item (a "+" button in the app header). Catalog rows have no Edit
+  action; items are edited in the store manager. Search is removed for now and
+  may return.
 - Selecting an item adds it with quantity 1 and incomplete status, then animates
   it out of the catalog. Stay on this tab so successive selections are easy.
 - Update the Grocery List tab count and announce the addition accessibly.
@@ -684,6 +718,7 @@ or merge needs separate approval.
 
 ### Grocery List tab
 
+- Grocery List is the first tab and opens by default; Catalog is second.
 - Show selected items in custom section and item order.
 - Keep one row per catalog item; repeated rows are explicitly out of scope.
 - No quantity UI in v1 (deferred to v2). The data model still stores
@@ -772,9 +807,12 @@ Sort by section order, item order, then stable ID as a deterministic tie-breaker
 
 A single small active-list document is deliberate: it makes reset atomic and
 avoids generation IDs, orphan cleanup, or a backend solely to clear a list.
-Use transactions for selection, removal, quantity changes, completion, and reset,
-so concurrent changes do not overwrite unrelated entries. Persist desired
-completion values rather than retrying a blind toggle. Selection is idempotent.
+Selection, removal, quantity changes, and completion are plain writes of a single
+`items.<id>` entry plus `changedItemId` (2026-11-27), so they apply locally at once
+and do not overwrite unrelated entries; the rules validate each one. Reset still
+uses a transaction. Persist desired completion values rather than retrying a blind
+toggle. Selection writes a fresh entry, so a near-simultaneous select by the other
+member can reset that item's checkmark (accepted).
 Do not put the entire catalog into that document.
 
 This choice has document-size and contention limits; it fits the current
@@ -809,21 +847,22 @@ management changes do not silently lose ordering edits.
   Clean up listeners on logout/unmount and distinguish loading, empty, and denied.
 - Both devices see confirmed changes without refreshing.
 - Local exit animation is presentation state, not the authority for list changes.
-  Disable duplicate activation during an operation. Reconcile live updates without
-  replaying exit animations or generating duplicate rows.
+  List changes do not lock the screen, so several items can be selected or
+  checked in quick succession. Reconcile live updates without replaying exit
+  animations or generating duplicate rows.
 - Show offline/connecting states; per user request there is no visible
   saving/saved text (selection feedback is the exit animation only).
-  On rejection/failure, restore a usable
-  catalog row, preserve user input where relevant, and show a specific retry path.
+  On rejection/failure, Firestore rolls back the local change, restoring a usable
+  catalog row; preserve user input where relevant and show a specific retry path.
 - No Undo for selection (removed at the user's request); Remove on Grocery
   List returns an item to the catalog.
 - Respect reduced motion; maintain sensible keyboard focus after a row exits.
-- Offline editing and persistent offline storage are outside v1. Do not enable
-  persistent Firestore cache as an accidental offline promise. Transactions
-  require connectivity; SDK snapshots may still show cached data, which must not
-  be represented as proof of a fresh server connection.
-- Expose connectivity/pending/error states accurately; network loss must not
-  leave an item hidden as though an unconfirmed write succeeded.
+- The persistent Firestore cache is enabled (2026-11-27). List changes (select,
+  check-off, remove) work offline and sync on reconnect; the offline banner says
+  so. Catalog, section, ordering, delete, and New list use transactions, which
+  require connectivity, and stay disabled while offline, connecting, or syncing.
+  Cached snapshots must not be represented as proof of a fresh server connection.
+- Expose connectivity and error states accurately.
 
 ## UX and visual direction
 

@@ -46,9 +46,7 @@ export const Modal = ({
           }}
         >
           {!isTitleHidden || hasCloseButton ? (
-            <div
-              className={`flex items-center gap-3 ${isTitleHidden ? 'justify-end' : 'justify-between'} ${description ? '' : 'mb-5'}`}
-            >
+            <div className={`modal-header ${isTitleHidden ? 'justify-end' : 'justify-between'}`}>
               <Dialog.Title className={isTitleHidden ? 'sr-only' : 'text-xl font-semibold'}>
                 {title}
               </Dialog.Title>
@@ -61,12 +59,14 @@ export const Modal = ({
           ) : (
             <Dialog.Title className="sr-only">{title}</Dialog.Title>
           )}
-          {description && (
-            <Dialog.Description id={descriptionId} className="text-muted mt-2 mb-5">
-              {description}
-            </Dialog.Description>
-          )}
-          {children}
+          <div className="modal-body">
+            {description && (
+              <Dialog.Description id={descriptionId} className="text-muted mb-5">
+                {description}
+              </Dialog.Description>
+            )}
+            {children}
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

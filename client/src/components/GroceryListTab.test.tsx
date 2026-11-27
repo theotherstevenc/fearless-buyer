@@ -14,6 +14,7 @@ describe('GroceryListTab', () => {
       },
     },
     isBusy: false,
+    isResetDisabled: false,
     onComplete: vi.fn().mockResolvedValue(true),
     onRemove: vi.fn().mockResolvedValue(true),
     onReset: vi.fn().mockResolvedValue(true),

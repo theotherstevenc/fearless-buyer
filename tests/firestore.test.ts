@@ -19,7 +19,7 @@ import {
 import type { Firestore } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { changeSelection } from '../client/src/lib/groceries'
+import { changeSelection, EMPTY_LIST } from '../client/src/lib/groceries'
 import { activeListSchema } from '../client/src/schemas/models'
 
 let env: RulesTestEnvironment
@@ -81,6 +81,15 @@ describe('household access', () => {
 })
 
 describe('active-list validation', () => {
+  it('accepts the service list writes for selecting, checking off and removing', async () => {
+    const list = doc(one, `${path}/shoppingLists/active`)
+    await services.updateSelection(EMPTY_LIST, 'lemons', { type: 'select' })
+    const selected = { items: { lemons: { quantity: 1, completed: false } } }
+    await services.updateSelection(selected, 'lemons', { type: 'complete', completed: true })
+    expect((await getDoc(list)).data()?.items).toEqual({ lemons: { quantity: 1, completed: true } })
+    await services.updateSelection(selected, 'lemons', { type: 'remove' })
+    expect((await getDoc(list)).data()?.items).toEqual({})
+  })
   it('accepts selection, quantity, completion, removal and an atomic empty reset', async () => {
     const list = doc(one, `${path}/shoppingLists/active`)
     await assertSucceeds(
@@ -139,8 +148,8 @@ describe('catalog and section integrity', () => {
     expect((await getDoc(doc(one, `${path}/shoppingLists/active`))).data()?.items).toEqual({})
   })
   it("atomically removes a selected grocery and preserves the other member's list edit", async () => {
-    await services.updateSelection('lemons', { type: 'select' })
-    await services.updateSelection('apples', { type: 'select' })
+    await services.updateSelection(EMPTY_LIST, 'lemons', { type: 'select' })
+    await services.updateSelection(EMPTY_LIST, 'apples', { type: 'select' })
     const list = doc(two, `${path}/shoppingLists/active`)
     await Promise.all([
       services.deleteCatalogItem('lemons', 0),
@@ -157,7 +166,7 @@ describe('catalog and section integrity', () => {
   it('serializes deletion against selection without leaving an orphaned list entry', async () => {
     const results = await Promise.allSettled([
       services.deleteCatalogItem('lemons', 0),
-      services.updateSelection('lemons', { type: 'select' }),
+      services.updateSelection(EMPTY_LIST, 'lemons', { type: 'select' }),
     ])
 
     expect(results[0].status).toBe('fulfilled')
@@ -173,7 +182,7 @@ describe('catalog and section integrity', () => {
     expect((await getDoc(doc(one, `${path}/sections/produce`))).data()?.itemCount).toBe(2)
   })
   it('denies deletion that leaves a selected item orphaned', async () => {
-    await services.updateSelection('lemons', { type: 'select' })
+    await services.updateSelection(EMPTY_LIST, 'lemons', { type: 'select' })
     const batch = writeBatch(one)
     batch.delete(doc(one, `${path}/catalog/lemons`))
     batch.update(doc(one, `${path}/sections/produce`), { itemCount: 1, lastItemId: 'lemons' })

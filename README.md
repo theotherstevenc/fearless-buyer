@@ -116,7 +116,7 @@ client/                  React app (npm workspace)
   src/hooks/             Live household data and connectivity
   src/lib/               Firebase setup and pure grocery helpers
   src/schemas/           Zod schemas for Firestore data
-  src/services/          Firestore transactions for list and catalog changes
+  src/services/          Firestore writes: plain list updates, transactions for catalog changes
 data/catalogSeed.json    A versioned starter catalog (imported only with setup:production --seed)
 docs/plan.md             Design decisions and implementation history
 scripts/setupLocal.ts    Creates the local accounts and household

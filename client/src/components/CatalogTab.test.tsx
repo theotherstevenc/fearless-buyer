@@ -11,7 +11,6 @@ describe('CatalogTab', () => {
     isBusy: false,
     exitingItems: [],
     onSelect: vi.fn().mockResolvedValue(true),
-    onEdit: vi.fn(),
     onManage: vi.fn(),
   })
   it('shows a setup path before sections exist', () => {
@@ -19,13 +18,9 @@ describe('CatalogTab', () => {
     render(<CatalogTab {...callbacks} data={{ ...fixtureData, sections: [], catalog: [] }} />)
     expect(screen.getByRole('button', { name: 'Set up store sections' })).toBeEnabled()
   })
-  it('keeps editing separate from selection', async () => {
-    const callbacks = props()
-    render(<CatalogTab {...callbacks} />)
-    const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Edit Lemons' }))
-    expect(callbacks.onEdit).toHaveBeenCalledWith(fixtureData.catalog[1])
-    expect(callbacks.onSelect).not.toHaveBeenCalled()
+  it('shows no edit controls on catalog rows', () => {
+    render(<CatalogTab {...props()} />)
+    expect(screen.queryByRole('button', { name: /^Edit / })).not.toBeInTheDocument()
   })
   it('keeps the exiting row during a confirmed live update, then removes it', () => {
     const callbacks = props()
