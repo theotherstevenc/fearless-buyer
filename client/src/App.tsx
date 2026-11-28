@@ -12,6 +12,7 @@ import { StoreManager } from './components/StoreManager'
 import { useAuth } from './context/useAuth'
 import { useConnectivity } from './hooks/useConnectivity'
 import { useHousehold } from './hooks/useHousehold'
+import { useIsScrolledDown } from './hooks/useIsScrolledDown'
 import { auth } from './lib/firebase'
 import { getErrorMessage } from './lib/groceries'
 import type { CatalogItem } from './schemas/models'
@@ -32,6 +33,7 @@ interface HouseholdAppProps {
 const HouseholdApp = ({ userId }: HouseholdAppProps) => {
   const household = useHousehold(userId)
   const isOnline = useConnectivity()
+  const isScrolledDown = useIsScrolledDown()
   const [tab, setTab] = useState('list')
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState('')
@@ -99,138 +101,141 @@ const HouseholdApp = ({ userId }: HouseholdAppProps) => {
       ? 'Connecting - showing saved data.'
       : ''
   return (
-    <main className={`app-shell ${isBusy ? 'is-saving' : ''}`}>
-      <header className="app-header">
-        <div className="brand-copy min-w-0">
-          <h1 className="text-2xl min-[390px]:text-3xl font-bold">
-            {isOnline ? 'Fearless Buyer' : 'Offline Buyer'}
-          </h1>
-          <p className="text-base min-[390px]:text-lg opacity-80">
-            {connectionMessage || 'Your weekly haul, in order.'}
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-1">
-          <button
-            className="header-button"
-            disabled={disabled || !data || data.sections.length === 0}
-            onClick={() => setIsAddingItem(true)}
-            aria-label="Add item"
-            title="Add item"
-          >
-            <Plus size={22} />
-          </button>
-          <button
-            className="header-button"
-            disabled={disabled || !data}
-            onClick={() => setIsManaging(true)}
-            aria-label="Manage store and catalog"
-            title="Manage store and catalog"
-          >
-            <Settings2 size={21} />
-          </button>
-        </div>
-      </header>
-      {/* The header shows connection state visually; this announces changes to screen readers. */}
-      <div className="sr-only" role="status" aria-live="polite">
-        {connectionMessage}
-      </div>
-      {(error || household.error) && !isLogoutOpen && (
-        <div className="error mb-4" role="alert">
-          {error || household.error}
-          {household.error && (
-            <button className="button-quiet ml-2" onClick={household.retry}>
-              Retry
-            </button>
+    // The root is the <main> element, so the sticky bar's containing block spans the whole page.
+    <Tabs.Root asChild value={tab} onValueChange={setTab}>
+      <main className={`app-shell ${isBusy ? 'is-saving' : ''}`}>
+        <div className={`app-bar ${isScrolledDown ? 'is-condensed' : ''}`}>
+          <header className="app-header">
+            <div className="brand-copy min-w-0">
+              <h1 className="app-title">{isOnline ? 'Fearless Buyer' : 'Offline Buyer'}</h1>
+              <p className="app-subtitle">{connectionMessage || 'Your weekly haul, in order.'}</p>
+            </div>
+            <div className="flex shrink-0 gap-1">
+              <button
+                className="header-button"
+                disabled={disabled || !data || data.sections.length === 0}
+                onClick={() => setIsAddingItem(true)}
+                aria-label="Add item"
+                title="Add item"
+              >
+                <Plus size={22} />
+              </button>
+              <button
+                className="header-button"
+                disabled={disabled || !data}
+                onClick={() => setIsManaging(true)}
+                aria-label="Manage store and catalog"
+                title="Manage store and catalog"
+              >
+                <Settings2 size={21} />
+              </button>
+            </div>
+          </header>
+          {data && (
+            <Tabs.List className="tabs" aria-label="Shopping views">
+              <Tabs.Trigger className="tab-button" value="list">
+                Grocery List <span className="tab-count">{count}</span>
+              </Tabs.Trigger>
+              <Tabs.Trigger className="tab-button" value="catalog">
+                Catalog
+              </Tabs.Trigger>
+            </Tabs.List>
           )}
         </div>
-      )}
-      <div className="notice" role="status" aria-live="polite">
-        {notice}
-      </div>
-      {household.isLoading && (
-        <p role="status" className="empty-state">
-          Loading your items...
-        </p>
-      )}
-      {data && (
-        <Tabs.Root value={tab} onValueChange={setTab}>
-          <Tabs.List className="tabs" aria-label="Shopping views">
-            <Tabs.Trigger className="tab-button" value="list">
-              Grocery List <span className="tab-count">{count}</span>
-            </Tabs.Trigger>
-            <Tabs.Trigger className="tab-button" value="catalog">
-              Catalog
-            </Tabs.Trigger>
-          </Tabs.List>
-          <Tabs.Content value="list" className="tab-content">
-            <GroceryListTab
-              data={data}
-              isBusy={isBusy}
-              isResetDisabled={disabled}
-              onChoose={() => setTab('catalog')}
-              onComplete={(id, completed) => changeList(id, { type: 'complete', completed })}
-              onRemove={(id) => changeList(id, { type: 'remove' })}
-              onReset={() => operate(resetList, 'New list ready. Choose your items.')}
-            />
-          </Tabs.Content>
-          <Tabs.Content value="catalog" className="tab-content">
-            <CatalogTab
-              data={data}
-              isBusy={isBusy}
-              exitingItems={exitingItems}
-              onSelect={handleSelect}
-              onManage={() => setIsManaging(true)}
-            />
-          </Tabs.Content>
-        </Tabs.Root>
-      )}
-      {data && isAddingItem && <ItemEditor data={data} onClose={() => setIsAddingItem(false)} />}
-      {data && isManaging && (
-        <StoreManager data={data} isDisabled={disabled} onClose={() => setIsManaging(false)} />
-      )}
-      <footer className="app-footer">
-        <p>Made for your household. No aisle numbers required.</p>
-        <button
-          className="button-quiet mt-2"
-          disabled={isBusy}
-          onClick={() => {
-            setError('')
-            setIsLogoutOpen(true)
-          }}
-        >
-          <LogOut size={18} aria-hidden="true" />
-          Sign out
-        </button>
-      </footer>
-      <Modal
-        isOpen={isLogoutOpen}
-        title="Sign out?"
-        description="Your list will be here when you sign back in."
-        onClose={() => {
-          if (!isBusy) setIsLogoutOpen(false)
-        }}
-      >
-        {error && (
-          <p className="error mb-3" role="alert">
-            {error}
+        {/* The header shows connection state visually; this announces changes to screen readers. */}
+        <div className="sr-only" role="status" aria-live="polite">
+          {connectionMessage}
+        </div>
+        {(error || household.error) && !isLogoutOpen && (
+          <div className="error mb-4" role="alert">
+            {error || household.error}
+            {household.error && (
+              <button className="button-quiet ml-2" onClick={household.retry}>
+                Retry
+              </button>
+            )}
+          </div>
+        )}
+        <div className="notice" role="status" aria-live="polite">
+          {notice}
+        </div>
+        {household.isLoading && (
+          <p role="status" className="empty-state">
+            Loading your items...
           </p>
         )}
-        <div className="flex justify-end gap-2">
-          <button className="button-quiet" disabled={isBusy} onClick={() => setIsLogoutOpen(false)}>
-            Stay signed in
-          </button>
+        {data && (
+          <>
+            <Tabs.Content value="list" className="tab-content">
+              <GroceryListTab
+                data={data}
+                isBusy={isBusy}
+                isResetDisabled={disabled}
+                onChoose={() => setTab('catalog')}
+                onComplete={(id, completed) => changeList(id, { type: 'complete', completed })}
+                onRemove={(id) => changeList(id, { type: 'remove' })}
+                onReset={() => operate(resetList, 'New list ready. Choose your items.')}
+              />
+            </Tabs.Content>
+            <Tabs.Content value="catalog" className="tab-content">
+              <CatalogTab
+                data={data}
+                isBusy={isBusy}
+                exitingItems={exitingItems}
+                onSelect={handleSelect}
+                onManage={() => setIsManaging(true)}
+              />
+            </Tabs.Content>
+          </>
+        )}
+        {data && isAddingItem && <ItemEditor data={data} onClose={() => setIsAddingItem(false)} />}
+        {data && isManaging && (
+          <StoreManager data={data} isDisabled={disabled} onClose={() => setIsManaging(false)} />
+        )}
+        <footer className="app-footer">
+          <p>Made for your household. No aisle numbers required.</p>
           <button
-            className="button-primary"
+            className="button-quiet mt-2"
             disabled={isBusy}
             onClick={() => {
-              void operate(() => signOut(auth))
+              setError('')
+              setIsLogoutOpen(true)
             }}
           >
+            <LogOut size={18} aria-hidden="true" />
             Sign out
           </button>
-        </div>
-      </Modal>
-    </main>
+        </footer>
+        <Modal
+          isOpen={isLogoutOpen}
+          title="Sign out?"
+          description="Your list will be here when you sign back in."
+          onClose={() => {
+            if (!isBusy) setIsLogoutOpen(false)
+          }}
+        >
+          {error && (
+            <p className="error mb-3" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <button className="button-quiet" disabled={isBusy} onClick={() => setIsLogoutOpen(false)}>
+              Stay signed in
+            </button>
+            <button
+              className="button-primary"
+              disabled={isBusy}
+              onClick={() => {
+                void operate(() => signOut(auth))
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </Modal>
+      </main>
+    </Tabs.Root>
   )
 }
 

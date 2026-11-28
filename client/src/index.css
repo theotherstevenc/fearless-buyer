@@ -59,6 +59,10 @@
   *::-webkit-scrollbar {
     display: none;
   }
+  /* Keeps keyboard-focused content from scrolling beneath the condensed sticky app bar. */
+  html {
+    scroll-padding-top: 8.5rem;
+  }
   body {
     @apply m-0 bg-background text-foreground font-sans antialiased;
   }
@@ -90,10 +94,46 @@
 
 @layer components {
   .app-shell {
-    @apply mx-auto max-w-3xl px-4 py-5 sm:px-6 sm:py-8;
+    @apply mx-auto max-w-3xl px-4 pb-5 sm:px-6 sm:pb-8;
+  }
+  /*
+   * Holds the header and tabs at the top of the page. Its opaque background (including the
+   * top padding) hides content scrolling beneath it. Once scrolled, it condenses but keeps
+   * every control at full touch size.
+   */
+  .app-bar {
+    @apply sticky top-0 z-20 flex flex-col gap-5 bg-background pt-5 pb-5 sm:pt-8;
+    transition:
+      padding 150ms ease-out,
+      gap 150ms ease-out;
+  }
+  .app-bar.is-condensed {
+    @apply gap-2 pt-2 pb-3 sm:pt-3;
+  }
+  /* Fades content into the bar instead of slicing it off at a hard edge. */
+  .app-bar.is-condensed::after {
+    @apply pointer-events-none absolute inset-x-0 top-full h-4;
+    content: '';
+    background: linear-gradient(var(--color-background), transparent);
   }
   .app-header {
-    @apply flex items-center justify-between gap-3 rounded-2xl bg-brand-surface text-on-brand px-5 py-5 mb-4;
+    @apply flex items-center justify-between gap-3 rounded-2xl bg-brand-surface text-on-brand px-5 py-5;
+    transition: padding 150ms ease-out;
+  }
+  .is-condensed .app-header {
+    @apply rounded-xl py-1 pl-4 pr-2;
+  }
+  .app-title {
+    @apply text-2xl font-bold min-[390px]:text-3xl;
+  }
+  .is-condensed .app-title {
+    @apply text-xl min-[390px]:text-xl;
+  }
+  .app-subtitle {
+    @apply text-base opacity-80 min-[390px]:text-lg;
+  }
+  .is-condensed .app-subtitle {
+    @apply hidden;
   }
   .brand-copy {
     @apply font-display;
@@ -102,7 +142,10 @@
     @apply flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-on-brand/15;
   }
   .tabs {
-    @apply grid grid-cols-2 gap-1 rounded-xl bg-soft p-1 mb-6;
+    @apply grid grid-cols-2 gap-1 rounded-xl bg-soft p-1;
+  }
+  .is-condensed .tab-button {
+    @apply min-h-11 py-1;
   }
   .tab-button {
     @apply min-h-12 rounded-lg px-4 py-2 font-medium text-muted flex items-center justify-center gap-2;
@@ -209,52 +252,133 @@
   .modal-body {
     @apply flex-1 overflow-y-auto p-5 sm:p-6;
   }
+  /*
+   * Content fades out across the top gap as it scrolls away, instead of being cut at a hard
+   * edge. Sticky headings rest just below the gap, so they stay crisp until pushed out.
+   * Keep the gap in sync with the heading's sticky offset and its backing height.
+   */
+  .modal-body.is-inset {
+    @apply pt-5 sm:pt-5;
+    mask-image: linear-gradient(transparent, black 1.25rem);
+  }
   .manage-rows {
-    @apply list-none p-0 m-0 rounded-lg border border-border bg-surface;
+    @apply list-none p-0 m-0;
     container-type: inline-size;
   }
   .manage-row {
-    @apply flex flex-wrap items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1 first:rounded-t-lg last:rounded-b-lg;
+    @apply flex flex-wrap items-center gap-1 min-h-14 border-b border-border last:border-b-0 bg-surface p-1;
+    transition: background-color 400ms ease-out;
   }
   .manage-row-label {
     @apply flex-1 min-w-24 min-h-11 truncate text-left rounded-md px-1;
     touch-action: pan-y;
     user-select: none;
   }
-  .section-form {
-    @apply flex items-center gap-2;
+  /*
+   * Each section is a card. The heading draws the card's rounded top edge and the list draws
+   * its sides and rounded bottom, so the top edge stays visible while the heading is stuck.
+   */
+  .manage-section {
+    @apply rounded-lg bg-surface;
   }
-  .section-form .field {
-    @apply flex-1 min-w-0;
+  .manage-section > .manage-rows,
+  .manage-section > .manage-empty {
+    @apply overflow-clip rounded-b-lg border border-t-0 border-border;
   }
-  .section-form .button-primary {
-    @apply shrink-0;
+  /* Keeps focus rings inside the clipped list and card edges so they show in full. */
+  .manage-section :focus-visible {
+    outline-offset: -3px;
   }
   /*
-   * Sticks flush to the top of the modal's scroll area until its section scrolls out of view.
-   * The negative offset cancels .modal-body's top padding, and the opaque surface backing
-   * hides rows that scroll past so the heading acts as the visible top edge. Equal top and
-   * bottom padding space the bar evenly between the modal header and the rows; the negative
-   * top margin cancels the extra padding while the heading sits in normal flow.
+   * The card's top row sticks just below the modal's faded top gap. Its square, opaque
+   * background hides rows scrolling beneath the bar's rounded corners.
    */
   .manage-section-heading {
-    @apply sticky -top-5 sm:-top-6 z-10 -mt-2 bg-surface py-2;
+    @apply sticky top-0 z-10 bg-surface;
   }
-  .manage-section-heading > span {
-    @apply block truncate rounded-lg border-l-4 border-primary bg-soft px-3 py-2 text-base font-semibold text-foreground;
+  /* Fills the faded gap above a stuck heading, so rows that scrolled past it stay hidden. */
+  .manage-section-heading::before {
+    @apply pointer-events-none absolute inset-x-0 bottom-full h-5 bg-surface;
+    content: '';
+  }
+  /*
+   * Fades rows into the stuck heading instead of slicing them off. It's invisible at rest,
+   * where it sits over the same surface color, and is inset so the card's side borders stay solid.
+   */
+  .manage-section-heading::after {
+    @apply pointer-events-none absolute inset-x-px top-full h-4;
+    content: '';
+    background: linear-gradient(var(--color-surface), transparent);
+  }
+  .manage-section-heading-bar {
+    @apply flex items-center gap-1 rounded-t-lg border border-l-4 border-border border-l-primary bg-soft py-0.5 pl-1 pr-0.5 text-base text-foreground;
+  }
+  .manage-section-title {
+    @apply min-w-0 flex-1 truncate px-2 font-display text-lg font-bold;
+  }
+  .manage-section-add {
+    @apply inline-flex min-h-11 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium text-primary hover:bg-surface;
+  }
+  .inline-name-form {
+    @apply flex min-w-24 flex-1;
+  }
+  .inline-name-input {
+    @apply min-h-11 px-2 py-1.5;
   }
   /* Keeps keyboard-focused rows from being hidden beneath the sticky heading. */
   .manage-section .manage-row {
-    scroll-margin-top: 4rem;
+    scroll-margin-top: 4.75rem;
   }
   .manage-empty {
-    @apply rounded-lg border border-dashed border-border bg-soft p-4 text-sm text-muted;
+    @apply m-0 p-4 text-sm text-muted;
+  }
+  /* Briefly marks a row that just moved here; the reduced-motion rule turns the fade into a swap. */
+  .manage-row.is-highlighted {
+    @apply bg-soft;
+    box-shadow: inset 4px 0 0 var(--color-primary);
+  }
+  .section-picker {
+    @apply m-0 min-w-0 border-0 p-0;
+  }
+  .section-picker-legend {
+    @apply mb-2 p-0 text-sm font-medium;
+  }
+  .section-picker-list {
+    @apply m-0 list-none overflow-clip rounded-lg border border-border p-0;
+  }
+  .section-picker-list > li:not(:last-child) {
+    @apply border-b border-border;
+  }
+  .section-choice {
+    @apply flex min-h-12 w-full items-center justify-between gap-3 bg-surface px-4 py-2 text-left;
+  }
+  button.section-choice:not(:disabled):hover {
+    @apply bg-soft;
+  }
+  button.section-choice:focus-visible {
+    outline-offset: -3px;
+  }
+  .section-choice.is-current {
+    @apply bg-soft text-muted;
+  }
+  .section-choice-name {
+    @apply min-w-0 truncate;
+  }
+  .section-choice-note {
+    @apply shrink-0 text-sm text-muted;
+  }
+  .section-choice.is-saved {
+    @apply bg-soft;
+    box-shadow: inset 4px 0 0 var(--color-primary);
+  }
+  .section-choice-note.is-saved {
+    @apply flex items-center gap-1 font-medium text-primary;
   }
   .manage-row-actions {
     @apply flex shrink-0 ml-auto;
   }
-  /* Below this width the handle, label, and four actions no longer fit on one line. */
-  @container (width < 21rem) {
+  /* Below this width the handle, label, and five item actions no longer fit on one line. */
+  @container (width < 23.5rem) {
     .manage-row-actions {
       @apply basis-full justify-end rounded-md bg-soft;
     }
@@ -307,6 +431,41 @@
     transform: translateX(32px);
     grid-template-rows: 0fr;
     border-bottom-width: 0;
+  }
+}
+/* Keep the exit durations in sync with MODAL_EXIT_MS in useConfirmThenClose.ts. */
+.modal-overlay[data-state='open'] {
+  animation: modal-fade-in 160ms ease-out;
+}
+.modal-overlay[data-state='closed'] {
+  animation: modal-fade-out 180ms ease-in forwards;
+}
+.modal-content[data-state='open'] {
+  animation: modal-rise-in 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+.modal-content[data-state='closed'] {
+  animation: modal-settle-out 180ms ease-in forwards;
+}
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes modal-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes modal-rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes modal-settle-out {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
   }
 }
 @media (prefers-reduced-motion: reduce) {

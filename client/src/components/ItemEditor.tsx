@@ -1,96 +1,105 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 
+import { useConfirmThenClose } from '../hooks/useConfirmThenClose'
 import { getErrorMessage } from '../lib/groceries'
 import { nameSchema } from '../schemas/models'
-import type { CatalogItem, HouseholdData } from '../schemas/models'
+import type { HouseholdData, Section } from '../schemas/models'
 import { saveCatalogItem } from '../services/groceries'
 import { Modal } from './Modal'
+import { SectionPicker } from './SectionPicker'
 
 interface ItemEditorProps {
   data: HouseholdData
-  item?: CatalogItem
   onClose: () => void
 }
 
-export const ItemEditor = ({ data, item, onClose }: ItemEditorProps) => {
+export const ItemEditor = ({ data, onClose }: ItemEditorProps) => {
   const sections = [...data.sections].sort((a, b) => a.sortOrder - b.sortOrder)
-  const [name, setName] = useState(item?.name ?? '')
-  const [sectionId, setSectionId] = useState(item?.sectionId ?? sections[0]?.id ?? '')
-  const [isBusy, setIsBusy] = useState(false)
+  const [name, setName] = useState('')
+  const [pendingSectionId, setPendingSectionId] = useState<string | undefined>()
   const [error, setError] = useState('')
-  const handleSave = async (event: FormEvent) => {
-    event.preventDefault()
+  const nameInputRef = useRef<HTMLInputElement>(null)
+  const firstSectionRef = useRef<HTMLButtonElement>(null)
+  const isBusy = !!pendingSectionId
+  const { isOpen, confirmedId, confirmThenClose } = useConfirmThenClose(onClose)
+  const trimmedName = name.trim()
+  const validateName = (): string | undefined => {
     const parsed = nameSchema.safeParse(name)
-    if (!parsed.success) {
-      setError(parsed.error.issues[0].message)
-      return
-    }
-    if (!sectionId) {
-      setError('Create a section in Manage store first.')
-      return
-    }
-    setIsBusy(true)
+    if (parsed.success) return parsed.data
+    setError(parsed.error.issues[0].message)
+    nameInputRef.current?.focus()
+    return undefined
+  }
+  // Enter can't pick a section on the user's behalf, so it moves focus to the section choices.
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault()
+    if (!validateName()) return
+    setError('')
+    firstSectionRef.current?.focus()
+  }
+  const handlePick = async (section: Section) => {
+    const validName = validateName()
+    if (!validName) return
+    setPendingSectionId(section.id)
     setError('')
     try {
-      await saveCatalogItem(parsed.data, sectionId, data.catalog, data.revision, item)
-      onClose()
+      await saveCatalogItem(validName, section.id, data.catalog, data.revision)
+      confirmThenClose(section.id)
     } catch (error) {
       console.error('Catalog save failed', error)
       setError(getErrorMessage(error))
-    } finally {
-      setIsBusy(false)
+      setPendingSectionId(undefined)
     }
   }
   return (
     <Modal
-      isOpen
+      isOpen={isOpen}
       hasDisplayTitle
-      title={item ? 'Edit item' : 'What else sounds good?'}
+      title="What else sounds good?"
       onClose={() => {
         if (!isBusy) onClose()
       }}
     >
-      <form onSubmit={handleSave} className="space-y-5">
+      <form onSubmit={handleSubmit} className={`space-y-5 ${isBusy ? 'is-saving' : ''}`} aria-busy={isBusy}>
         <label className="field">
           Name
           <input
+            ref={nameInputRef}
             autoFocus
             required
             maxLength={100}
             autoComplete="off"
+            enterKeyHint="next"
             data-1p-ignore
             value={name}
+            readOnly={isBusy}
             onChange={(event) => setName(event.target.value)}
             aria-describedby={error ? 'item-error' : undefined}
           />
-        </label>
-        <label className="field">
-          Store section
-          <select required value={sectionId} onChange={(event) => setSectionId(event.target.value)}>
-            <option value="" disabled>
-              Choose a section
-            </option>
-            {sections.map((section) => (
-              <option key={section.id} value={section.id}>
-                {section.name}
-              </option>
-            ))}
-          </select>
         </label>
         {error && (
           <p id="item-error" className="error" role="alert">
             {error}
           </p>
         )}
-        <div className="flex justify-end gap-2">
-          <button type="button" className="button-quiet" disabled={isBusy} onClick={onClose}>
-            Cancel
-          </button>
-          <button type="submit" className="button-primary" disabled={isBusy}>
-            {isBusy ? 'Saving...' : 'Save item'}
-          </button>
-        </div>
+        {sections.length > 0 ? (
+          <SectionPicker
+            legend="Add it to"
+            sections={sections}
+            pendingSectionId={pendingSectionId}
+            savedSectionId={confirmedId}
+            savedNote="Added"
+            isDisabled={isBusy}
+            firstChoiceRef={firstSectionRef}
+            getActionLabel={(section) =>
+              trimmedName ? `Add ${trimmedName} to ${section.name}` : `Add to ${section.name}`
+            }
+            onPick={(section) => void handlePick(section)}
+          />
+        ) : (
+          <p className="manage-empty">Create a section in Manage store first.</p>
+        )}
       </form>
     </Modal>
   )
