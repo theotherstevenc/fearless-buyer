@@ -27,6 +27,8 @@ interface SortableRow {
   id: string
   label: string
   actions: ReactNode
+  editor?: ReactNode
+  isHighlighted?: boolean
 }
 interface SortableRowsProps {
   rows: SortableRow[]
@@ -49,7 +51,7 @@ const DragRow = ({ row, isBusy, isFirst, isLast, onMove }: DragRowProps) => {
   return (
     <li
       ref={setNodeRef}
-      className={`manage-row ${isDragging ? 'dragging' : ''}`}
+      className={`manage-row ${isDragging ? 'dragging' : ''} ${row.isHighlighted ? 'is-highlighted' : ''}`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <button
@@ -61,16 +63,18 @@ const DragRow = ({ row, isBusy, isFirst, isLast, onMove }: DragRowProps) => {
       >
         <GripVertical size={18} />
       </button>
-      <button
-        className="manage-row-label"
-        {...attributes}
-        {...listeners}
-        disabled={isBusy}
-        aria-label={`Hold ${row.label} to reorder`}
-        title={row.label}
-      >
-        {row.label}
-      </button>
+      {row.editor ?? (
+        <button
+          className="manage-row-label"
+          {...attributes}
+          {...listeners}
+          disabled={isBusy}
+          aria-label={`Hold ${row.label} to reorder`}
+          title={row.label}
+        >
+          {row.label}
+        </button>
+      )}
       <div className="manage-row-actions">
         <button
           className={`icon-button ${isFirst ? 'is-unavailable' : ''}`}

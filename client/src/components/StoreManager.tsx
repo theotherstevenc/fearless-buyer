@@ -1,14 +1,32 @@
-import { useState } from 'react'
-import type { FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { FolderInput, Trash2 } from 'lucide-react'
 
 import { getErrorMessage, groupGroceries } from '../lib/groceries'
 import type { CatalogItem, HouseholdData, Section } from '../schemas/models'
-import { deleteCatalogItem, removeEmptySection, reorder, saveSection } from '../services/groceries'
-import { ItemEditor } from './ItemEditor'
+import {
+  deleteCatalogItem,
+  removeEmptySection,
+  reorder,
+  saveCatalogItem,
+  saveSection,
+} from '../services/groceries'
+import { InlineNameInput } from './InlineNameInput'
+import { ManageHeading } from './ManageHeading'
 import { Modal } from './Modal'
+import { MoveItemDialog } from './MoveItemDialog'
+import { RenameButton } from './RenameButton'
 import { SortableRows } from './SortableRows'
+
+const UNTITLED_ITEM_NAME = 'Untitled item'
+const UNTITLED_SECTION_NAME = 'Untitled section'
+
+const sectionRenameButtonId = (sectionId: string): string => `manage-section-rename-${sectionId}`
+const itemRenameButtonId = (itemId: string): string => `manage-item-rename-${itemId}`
+const sectionRenameFormId = (sectionId: string): string => `manage-section-rename-form-${sectionId}`
+const itemRenameFormId = (itemId: string): string => `manage-item-rename-form-${itemId}`
+const itemMoveButtonId = (itemId: string): string => `manage-item-move-${itemId}`
+const MOVED_ITEM_HIGHLIGHT_MS = 2000
 
 interface StoreManagerProps {
   data: HouseholdData
@@ -17,16 +35,44 @@ interface StoreManagerProps {
 }
 
 export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) => {
-  const [sectionName, setSectionName] = useState('')
-  const [editingSection, setEditingSection] = useState<Section | undefined>()
-  const [editingItem, setEditingItem] = useState<CatalogItem | undefined>()
+  const [editingSectionId, setEditingSectionId] = useState<string | undefined>()
+  const [editingItemId, setEditingItemId] = useState<string | undefined>()
+  const [movingItem, setMovingItem] = useState<CatalogItem | undefined>()
   const [deletingItem, setDeletingItem] = useState<CatalogItem | undefined>()
   const [deletingSection, setDeletingSection] = useState<Section | undefined>()
-  const [isAddingItem, setIsAddingItem] = useState(false)
+  const [pendingFocusId, setPendingFocusId] = useState<string | undefined>()
+  const [movedItem, setMovedItem] = useState<{ id: string; sectionId: string } | undefined>()
+  const [announcement, setAnnouncement] = useState('')
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState('')
   const groups = groupGroceries(data.sections, data.catalog, data.list, 'manage')
   const disabled = isBusy || isDisabled
+  const isEditingName = !!editingSectionId || !!editingItemId
+  // Inline edits unmount their input, so return keyboard focus to the control that started them.
+  useEffect(() => {
+    if (!pendingFocusId) return
+    document.getElementById(pendingFocusId)?.focus()
+    setPendingFocusId(undefined)
+  }, [pendingFocusId])
+  const isMovedItemPlaced = data.catalog.some(
+    (item) => item.id === movedItem?.id && item.sectionId === movedItem.sectionId,
+  )
+  // Once the moved item renders in its new section and the move dialog has closed, bring it into
+  // view and focus it so the change is easy to confirm, then let the highlight fade.
+  useEffect(() => {
+    if (!movedItem || !isMovedItemPlaced || movingItem) return
+    // Runs after the closing dialog restores focus, so the moved item keeps it.
+    const focusTimer = setTimeout(() => {
+      const moveButton = document.getElementById(itemMoveButtonId(movedItem.id))
+      moveButton?.closest('.manage-row')?.scrollIntoView({ block: 'nearest' })
+      moveButton?.focus({ preventScroll: true })
+    }, 0)
+    const highlightTimer = setTimeout(() => setMovedItem(undefined), MOVED_ITEM_HIGHLIGHT_MS)
+    return () => {
+      clearTimeout(focusTimer)
+      clearTimeout(highlightTimer)
+    }
+  }, [isMovedItemPlaced, movedItem, movingItem])
   const operate = async (operation: () => Promise<void>): Promise<boolean> => {
     setIsBusy(true)
     setError('')
@@ -41,85 +87,93 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
       setIsBusy(false)
     }
   }
-  const handleSectionSave = async (event: FormEvent) => {
-    event.preventDefault()
-    if (await operate(() => saveSection(sectionName, data.sections, data.revision, editingSection))) {
-      setSectionName('')
-      setEditingSection(undefined)
+  const handleSectionAdd = async () => {
+    let newSectionId = ''
+    const isSaved = await operate(async () => {
+      newSectionId = await saveSection(UNTITLED_SECTION_NAME, data.sections, data.revision)
+    })
+    if (isSaved) {
+      setEditingItemId(undefined)
+      setEditingSectionId(newSectionId)
+    }
+  }
+  const handleItemAdd = async (section: Section) => {
+    let newItemId = ''
+    const isSaved = await operate(async () => {
+      newItemId = await saveCatalogItem(UNTITLED_ITEM_NAME, section.id, data.catalog, data.revision)
+    })
+    if (isSaved) {
+      setEditingSectionId(undefined)
+      setEditingItemId(newItemId)
     }
   }
   return (
     <Modal
       isOpen
       hasDisplayTitle
+      hasInsetScrollArea
       title="Your store, your route"
       onClose={() => {
-        if (!isBusy) onClose()
+        // Escape cancels an inline edit instead of closing the whole dialog.
+        if (!isBusy && !isEditingName) onClose()
       }}
     >
+      <p className="sr-only" role="status">
+        {announcement}
+      </p>
       <div className={`space-y-5 ${isBusy ? 'is-saving' : ''}`} aria-busy={isBusy}>
         {error && !deletingItem && !deletingSection && (
           <p role="alert" className="error">
             {error}
           </p>
         )}
-        <form onSubmit={handleSectionSave} className="space-y-3">
-          <div className="section-form">
-            <label className="field">
-              <span className="sr-only">{editingSection ? 'Rename section' : 'Section name'}</span>
-              <input
-                required
-                maxLength={100}
-                autoComplete="off"
-                data-1p-ignore
-                disabled={disabled}
-                placeholder="For example: Produce"
-                value={sectionName}
-                onChange={(event) => setSectionName(event.target.value)}
-              />
-            </label>
-            <button className="button-primary" type="submit" disabled={disabled}>
-              {editingSection ? 'Save section' : 'Add section'}
-            </button>
-          </div>
-          {editingSection && (
-            <button
-              className="button-quiet"
-              type="button"
-              disabled={disabled}
-              onClick={() => {
-                setEditingSection(undefined)
-                setSectionName('')
-              }}
-            >
-              Cancel rename
-            </button>
-          )}
-        </form>
-        {groups.length === 0 && (
-          <p className="manage-empty">Add your first section to start organizing your items.</p>
-        )}
-        {groups.length > 0 && (
-          <>
-            <h3 className="font-semibold">Section order</h3>
+        <section className="manage-section" aria-label="Store sections">
+          <ManageHeading
+            title="Sections"
+            actionLabel="Add section"
+            actionAccessibleLabel="Add section"
+            isDisabled={disabled}
+            onAction={() => void handleSectionAdd()}
+          />
+          {groups.length === 0 ? (
+            <p className="manage-empty">Add your first section to start organizing your items.</p>
+          ) : (
             <SortableRows
               isBusy={disabled}
               rows={groups.map(({ section }) => ({
                 id: section.id,
                 label: section.name,
+                editor:
+                  editingSectionId === section.id ? (
+                    <InlineNameInput
+                      formId={sectionRenameFormId(section.id)}
+                      initialName={section.name}
+                      label={`Rename section ${section.name}`}
+                      onSave={(name) =>
+                        operate(async () => {
+                          await saveSection(name, data.sections, data.revision, section)
+                        })
+                      }
+                      onClose={(shouldRestoreFocus) => {
+                        setEditingSectionId(undefined)
+                        if (shouldRestoreFocus) setPendingFocusId(sectionRenameButtonId(section.id))
+                      }}
+                    />
+                  ) : undefined,
                 actions: (
                   <>
-                    <button
-                      className="icon-button"
-                      disabled={disabled}
-                      aria-label={`Rename ${section.name}`}
-                      onClick={() => {
-                        setEditingSection(section)
-                        setSectionName(section.name)
+                    <RenameButton
+                      id={sectionRenameButtonId(section.id)}
+                      name={section.name}
+                      formId={sectionRenameFormId(section.id)}
+                      isEditing={editingSectionId === section.id}
+                      isDisabled={disabled}
+                      onEdit={() => {
+                        setError('')
+                        setEditingItemId(undefined)
+                        setEditingSectionId(section.id)
                       }}
-                    >
-                      <Pencil size={16} />
-                    </button>
+                    />
                     <button
                       className={`icon-button ${section.itemCount > 0 ? 'is-unavailable' : ''}`}
                       disabled={disabled || section.itemCount > 0}
@@ -137,63 +191,95 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
               }))}
               onReorder={(ids) => operate(() => reorder('sections', ids, data.revision))}
             />
-            <button className="button-primary" disabled={disabled} onClick={() => setIsAddingItem(true)}>
-              <Plus size={18} aria-hidden="true" />
-              Add item
-            </button>
-            {groups.map(({ section, items }) => (
-              <section key={section.id} aria-label={`${section.name} items`}>
-                <h3 className="section-heading" title={section.name}>
-                  {section.name}
-                </h3>
-                {items.length > 0 ? (
-                  <SortableRows
-                    isBusy={disabled}
-                    rows={items.map((item) => ({
-                      id: item.id,
-                      label: item.name,
-                      actions: (
-                        <>
-                          <button
-                            className="icon-button"
-                            disabled={disabled}
-                            aria-label={`Edit ${item.name}`}
-                            onClick={() => setEditingItem(item)}
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            className="icon-button text-danger"
-                            disabled={disabled}
-                            aria-label={`Delete ${item.name} from catalog`}
-                            onClick={() => {
-                              setError('')
-                              setDeletingItem(item)
-                            }}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </>
-                      ),
-                    }))}
-                    onReorder={(ids) => operate(() => reorder('catalog', ids, data.revision))}
-                  />
-                ) : (
-                  <p className="manage-empty">No items here yet.</p>
-                )}
-              </section>
-            ))}
-          </>
-        )}
+          )}
+        </section>
+        {groups.map(({ section, items }) => (
+          <section key={section.id} className="manage-section" aria-label={`${section.name} items`}>
+            <ManageHeading
+              title={section.name}
+              actionLabel="Add item"
+              actionAccessibleLabel={`Add item to ${section.name}`}
+              isDisabled={disabled}
+              onAction={() => void handleItemAdd(section)}
+            />
+            {items.length > 0 ? (
+              <SortableRows
+                isBusy={disabled}
+                rows={items.map((item) => ({
+                  id: item.id,
+                  isHighlighted: isMovedItemPlaced && movedItem?.id === item.id,
+                  label: item.name,
+                  editor:
+                    editingItemId === item.id ? (
+                      <InlineNameInput
+                        formId={itemRenameFormId(item.id)}
+                        initialName={item.name}
+                        label={`Rename ${item.name}`}
+                        onSave={(name) =>
+                          operate(async () => {
+                            await saveCatalogItem(name, item.sectionId, data.catalog, data.revision, item)
+                          })
+                        }
+                        onClose={(shouldRestoreFocus) => {
+                          setEditingItemId(undefined)
+                          if (shouldRestoreFocus) setPendingFocusId(itemRenameButtonId(item.id))
+                        }}
+                      />
+                    ) : undefined,
+                  actions: (
+                    <>
+                      <RenameButton
+                        id={itemRenameButtonId(item.id)}
+                        name={item.name}
+                        formId={itemRenameFormId(item.id)}
+                        isEditing={editingItemId === item.id}
+                        isDisabled={disabled}
+                        onEdit={() => {
+                          setError('')
+                          setEditingSectionId(undefined)
+                          setEditingItemId(item.id)
+                        }}
+                      />
+                      <button
+                        id={itemMoveButtonId(item.id)}
+                        className="icon-button"
+                        disabled={disabled}
+                        aria-label={`Move ${item.name} to another section`}
+                        onClick={() => setMovingItem(item)}
+                      >
+                        <FolderInput size={16} />
+                      </button>
+                      <button
+                        className="icon-button text-danger"
+                        disabled={disabled}
+                        aria-label={`Delete ${item.name} from catalog`}
+                        onClick={() => {
+                          setError('')
+                          setDeletingItem(item)
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  ),
+                }))}
+                onReorder={(ids) => operate(() => reorder('catalog', ids, data.revision))}
+              />
+            ) : (
+              <p className="manage-empty">No items here yet.</p>
+            )}
+          </section>
+        ))}
       </div>
-      {(editingItem || isAddingItem) && (
-        <ItemEditor
+      {movingItem && (
+        <MoveItemDialog
           data={data}
-          item={editingItem}
-          onClose={() => {
-            setEditingItem(undefined)
-            setIsAddingItem(false)
+          item={movingItem}
+          onMoved={(section) => {
+            setMovedItem({ id: movingItem.id, sectionId: section.id })
+            setAnnouncement(`Moved ${movingItem.name} to ${section.name}.`)
           }}
+          onClose={() => setMovingItem(undefined)}
         />
       )}
       <Modal
@@ -221,10 +307,7 @@ export const StoreManager = ({ data, isDisabled, onClose }: StoreManagerProps) =
                 deletingSection &&
                 (await operate(() => removeEmptySection(deletingSection, data.revision)))
               ) {
-                if (editingSection?.id === deletingSection.id) {
-                  setEditingSection(undefined)
-                  setSectionName('')
-                }
+                if (editingSectionId === deletingSection.id) setEditingSectionId(undefined)
                 setDeletingSection(undefined)
               }
             }}

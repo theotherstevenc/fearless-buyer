@@ -61,14 +61,14 @@ export const saveSection = async (
   sections: Section[],
   expectedRevision: number,
   existing?: Section,
-): Promise<void> => {
+): Promise<string> => {
   const cleanName = nameSchema.parse(name)
+  const ref = existing ? doc(sectionsRef, existing.id) : doc(sectionsRef)
   await runTransaction(db, async (transaction) => {
     const order = await transaction.get(orderRef)
     const revision = order.exists() ? readRevision(order.data()) : 0
     if (revision !== expectedRevision)
       throw new Error('Store layout changed. Please try again with the latest order.')
-    const ref = existing ? doc(sectionsRef, existing.id) : doc(sectionsRef)
     const current = existing ? await transaction.get(ref) : null
     if (existing && !current?.exists()) throw new Error('This section no longer exists.')
     const stored = current?.exists() ? sectionSchema.parse(current.data()) : null
@@ -79,6 +79,7 @@ export const saveSection = async (
     })
     transaction.set(orderRef, { revision: revision + 1 })
   })
+  return ref.id
 }
 
 export const saveCatalogItem = async (
@@ -87,13 +88,13 @@ export const saveCatalogItem = async (
   catalog: CatalogItem[],
   expectedRevision: number,
   existing?: CatalogItem,
-): Promise<void> => {
+): Promise<string> => {
+  const ref = existing ? doc(catalogRef, existing.id) : doc(catalogRef)
   await runTransaction(db, async (transaction) => {
     const order = await transaction.get(orderRef)
     const revision = order.exists() ? readRevision(order.data()) : 0
     if (revision !== expectedRevision)
       throw new Error('Catalog changed. Please try again with the latest order.')
-    const ref = existing ? doc(catalogRef, existing.id) : doc(catalogRef)
     const current = existing ? await transaction.get(ref) : null
     if (existing && !current?.exists()) throw new Error('This item no longer exists.')
     const stored = current?.exists() ? catalogItemSchema.parse(current.data()) : null
@@ -124,6 +125,7 @@ export const saveCatalogItem = async (
     transaction.set(ref, { ...item, updatedAt: serverTimestamp() })
     transaction.set(orderRef, { revision: revision + 1 })
   })
+  return ref.id
 }
 
 export const reorder = async (

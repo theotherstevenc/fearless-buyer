@@ -9,6 +9,7 @@ interface ModalProps {
   isTitleHidden?: boolean
   hasDisplayTitle?: boolean
   hasCloseButton?: boolean
+  hasInsetScrollArea?: boolean
   isOpen: boolean
   onClose: () => void
   children: ReactNode
@@ -20,6 +21,7 @@ export const Modal = ({
   isTitleHidden = false,
   hasDisplayTitle = false,
   hasCloseButton = true,
+  hasInsetScrollArea = false,
   isOpen,
   onClose,
   children,
@@ -69,7 +71,7 @@ export const Modal = ({
           ) : (
             <Dialog.Title className="sr-only">{title}</Dialog.Title>
           )}
-          <div className="modal-body">
+          <div className={`modal-body ${hasInsetScrollArea ? 'is-inset' : ''}`}>
             {description && (
               <Dialog.Description id={descriptionId} className="text-muted mb-5">
                 {description}

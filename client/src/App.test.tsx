@@ -4,7 +4,7 @@ import { signOut } from 'firebase/auth'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { App } from './App'
-import { updateSelection } from './services/groceries'
+import { saveCatalogItem, updateSelection } from './services/groceries'
 import { fixtureData } from './test/fixtures'
 
 vi.mock('firebase/auth', () => ({ signOut: vi.fn() }))
@@ -95,9 +95,14 @@ describe('App', () => {
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Manage store and catalog' }))
     const manager = screen.getByRole('dialog', { name: 'Your store, your route' })
-    await user.click(within(manager).getByRole('button', { name: 'Add item' }))
+    await user.click(within(manager).getByRole('button', { name: 'Add item to Produce' }))
 
-    expect(screen.getByRole('dialog', { name: 'What else sounds good?' })).toBeInTheDocument()
+    expect(saveCatalogItem).toHaveBeenCalledExactlyOnceWith(
+      'Untitled item',
+      'produce',
+      fixtureData.catalog,
+      0,
+    )
   })
 
   it('requires confirmation for the labeled sign-out action and allows cancellation', async () => {
