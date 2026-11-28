@@ -50,17 +50,22 @@ production Firebase resources or deployments have been created.
 
 ### Jump in next time (updated 2026-11-27)
 
-**Latest (2026-11-27):** work is on the local branch `feat-instant-list-updates`
-(not pushed, not merged; production Hosting is ahead of `main`). Everything on
-the branch, including the follow-up polish and Hosting cache headers, was
-deployed to production on 2026-11-27. See item 8 under Next priorities.
+**Latest (2026-11-27):** `feat-instant-list-updates` was merged into `main` via
+pull request #3, and production Hosting matches `main`. It included the
+follow-up polish and Hosting cache headers. See item 8 under Next priorities.
+
+**Newer (2026-11-27):** UI polish is on the local branch
+`feat-sticky-section-headings` (signed commits ahead of `main`; not
+pushed, not deployed). See item 9 under Next priorities. Continue on that
+branch, or push and open a pull request once approved.
 
 **Start next session with:**
 
 1. Phone check of the deployed build: iOS input zoom, fixed dialog headers,
    rapid catalog selection, offline check-off then sync, the "Offline Buyer"
    header, display-font dialog titles on the iPhone 13 mini, and header-to-tab
-   spacing.
+   spacing. After item 9 deploys, also check the condensing app bar, sticky
+   store-manager headings and fades, section pickers, and the home-screen icon.
 2. Add a service worker (`vite-plugin-pwa`, dev dependency) so the app shell
    opens with no signal. Today offline editing only works if the page is
    already loaded; an iOS tab reload in the store fails. Needs an update
@@ -68,7 +73,7 @@ deployed to production on 2026-11-27. See item 8 under Next priorities.
 3. Tidy-ups: remove the unused `hasPendingWrites` from `useHousehold`; consider
    an immediate mouse drag (distance constraint) on desktop instead of the
    300 ms hold; optionally clear the Firestore cache on sign-out.
-4. Ask before pushing `feat-instant-list-updates` or opening a pull request.
+4. Each commit, push, pull request, merge, and deploy needs separate approval.
 
 **Starting state:** the user considers the app v1-ready. Local app/emulators are
 stopped and data was exported cleanly. On 2026-11-25 the branch
@@ -197,7 +202,7 @@ Next priorities:
    lives in Git-ignored `client/.env.production.local`, which only `npm run
 build` reads, so `npm run dev` stays on the emulators. Every future deploy
    still needs separate approval.
-8. 2026-11-27 (branch `feat-instant-list-updates`, not pushed): revisions from
+8. 2026-11-27 (branch `feat-instant-list-updates`, merged via #3): revisions from
    the user's phone review plus a fix for laggy, flickering selection.
    - UI: the header "+" (Add item) now shows on all widths, including the
      iPhone 13 mini. The catalog row Edit (pencil) action was removed; items are
@@ -240,9 +245,28 @@ build` reads, so `npm run dev` stays on the emulators. Every future deploy
      SPA routes) with `no-cache`, so new deploys are picked up immediately. The
      later, more specific header rule wins; verified on the Hosting emulator.
    - Next session: see "Start next session with" above.
+9. 2026-11-27 (branch `feat-sticky-section-headings`, not pushed): store
+   manager and app shell polish.
+   - Store manager: sections are cards whose Kalam headings stick while their
+     rows are in view. Each heading holds inline rename (pencil/check) and
+     "Add item"; a "Sections" heading holds "Add section". The scroll area
+     keeps 20px of space under the dialog header and fades headings out as
+     they leave (`mask-image`); an opaque backing above each heading hides rows
+     that scrolled past it, so card corners stay rounded.
+   - Move and add dialogs use a shared `SectionPicker`: tap a section to save.
+     Sections stay in store order; the current one is greyed and marked
+     "Current". `useConfirmThenClose` shows "✓ Moved"/"✓ Added" for 600 ms,
+     then plays a 180 ms exit animation. Escape and X close at once. A moved
+     item is scrolled to, highlighted, focused, and announced.
+   - App bar: the header and Grocery List | Catalog tabs are sticky.
+     `useIsScrolledDown` condenses them past 96px and expands them below 8px
+     (hysteresis avoids flicker), with a short fade under the bar.
+   - Favicon: `client/public/favicon.svg` (cream basket on red), plus
+     `favicon-32.png` and `apple-touch-icon.png` (180px), linked from
+     `client/index.html`. They are served `no-cache`, so no renaming is needed.
 
 Latest full application validation passed (2026-11-27): ESLint, Prettier,
-TypeScript/build, 42 client tests, and 21 emulator tests. The seed separately passed strict schema,
+TypeScript/build, and 55 client tests (emulator tests last passed with 21). The seed separately passed strict schema,
 count/order, and live-catalog comparison checks. While emulators are already
 running, use `./node_modules/.bin/vitest run --config vitest.emulator.config.ts`
 for rules tests; do not start a second emulator or target the live
